@@ -136,7 +136,7 @@ export async function setMaterialStateAction(fd: FormData) {
   if (!["DRAFT", "ACTIVE", "RETIRED"].includes(state)) throw new Error("Estado inválido");
   const material = await withDbRetry(() => db.learningMaterial.findFirst({ where: { id: materialId, courseId } }));
   if (!material) throw new Error("Material no encontrado");
-  const allowed = material.state === "DRAFT" ? ["DRAFT", "ACTIVE", "RETIRED"] : material.state === "ACTIVE" ? ["ACTIVE", "RETIRED"] : ["RETIRED"];
+  const allowed = material.state === "DRAFT" ? ["DRAFT", "ACTIVE", "RETIRED"] : material.state === "ACTIVE" ? ["ACTIVE", "RETIRED"] : ["RETIRED", "ACTIVE"];
   if (!allowed.includes(state)) throw new Error(`Transición de material inválida: ${material.state} → ${state}`);
   await withDbRetry(() => db.learningMaterial.update({ where: { id: materialId }, data: { state: state as any } }));
   revalidatePath(`/teacher/courses/${courseId}`);
