@@ -101,35 +101,34 @@ model TeacherProfile {
 }
 
 model StudentProfile {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enrollments Enrollment[]
+  id            String @id @default(cuid())
+  userId        String @unique
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments   Enrollment[]
   conversations Conversation[]
-  feedback StudentFeedback[]
+  classFeedback ClassFeedback[]
 }
 
 model Course {
-  id           String   @id @default(cuid())
-  teacherId    String
-  name         String
-  description  String
-  joinCode     String   @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  enrollments  Enrollment[]
-  activities   Activity[]
-  materials    LearningMaterial[]
-  conversations Conversation[]
-  concepts     Concept[]
-  insights     AggregatedInsight[]
+  id              String   @id @default(cuid())
+  teacherId       String
+  name            String
+  description     String
+  joinCode        String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  teacher         TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments     Enrollment[]
+  activities      Activity[]
+  materials       LearningMaterial[]
+  conversations   Conversation[]
+  concepts        Concept[]
+  insights        AggregatedInsight[]
   recommendations Recommendation[]
-  interventions TeacherIntervention[]
-  sessions     ClassSession[]
-  feedback     StudentFeedback[]
-  feedbackAggregates FeedbackAggregate[]
-  contentChunks ContentChunk[]
+  interventions   TeacherIntervention[]
+  sessions        ClassSession[]
+  classFeedback   ClassFeedback[]
+  contentChunks   ContentChunk[]
   @@index([teacherId])
 }
 
@@ -201,19 +200,19 @@ model ContentChunk {
 }
 
 model Conversation {
-  id         String   @id @default(cuid())
-  courseId   String
-  activityId String?
-  studentId  String
-  status     ConversationStatus @default(ACTIVE)
+  id          String   @id @default(cuid())
+  courseId    String
+  activityId  String?
+  studentId   String
+  status      ConversationStatus @default(ACTIVE)
   consentedAt DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  messages   Message[]
-  analyses   ConversationAnalysis[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  analyses    ConversationAnalysis[]
   @@index([courseId, activityId])
   @@index([studentId])
 }
@@ -238,8 +237,6 @@ model Concept {
   course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   signals   ConceptSignal[]
   insights  AggregatedInsight[]
-  feedback  StudentFeedback[]
-  feedbackAggregates FeedbackAggregate[]
   @@unique([courseId, slug])
 }
 
@@ -258,17 +255,17 @@ model ConversationAnalysis {
 }
 
 model ConceptSignal {
-  id                    String   @id @default(cuid())
-  analysisId            String
-  conceptId             String
-  participantKey        String
-  type                   SignalType
-  evidenceSnippet       String   @db.Text
-  explanationType       ExplanationType?
-  understandingSignal   UnderstandingSignal @default(NONE)
-  createdAt              DateTime @default(now())
-  analysis               ConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
-  concept                Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  analysisId          String
+  conceptId           String
+  participantKey      String
+  type                SignalType
+  evidenceSnippet     String   @db.Text
+  explanationType     ExplanationType?
+  understandingSignal UnderstandingSignal @default(NONE)
+  createdAt           DateTime @default(now())
+  analysis             ConversationAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  concept              Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
   @@index([conceptId, participantKey])
   @@index([analysisId])
 }
@@ -294,17 +291,17 @@ model AggregatedInsight {
 }
 
 model Recommendation {
-  id         String   @id @default(cuid())
-  courseId   String
-  insightId  String
-  title      String
-  rationale  String   @db.Text
-  actionText String   @db.Text
-  status     RecommendationStatus @default(GENERATED)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  insight    AggregatedInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  courseId      String
+  insightId     String
+  title         String
+  rationale     String   @db.Text
+  actionText    String   @db.Text
+  status        RecommendationStatus @default(GENERATED)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  course        Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  insight       AggregatedInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
   interventions TeacherIntervention[]
   @@index([courseId, status])
 }
@@ -325,52 +322,36 @@ model TeacherIntervention {
 }
 
 model ClassSession {
-  id          String   @id @default(cuid())
-  courseId    String
-  activityId  String?
-  title       String
-  status      SessionStatus @default(OPEN)
-  startedAt   DateTime @default(now())
-  endedAt     DateTime?
-  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  interventions TeacherIntervention[]
-  feedback     StudentFeedback[]
-  aggregates   FeedbackAggregate[]
+  id                     String   @id @default(cuid())
+  courseId               String
+  activityId             String?
+  title                  String
+  status                 SessionStatus @default(OPEN)
+  startedAt              DateTime @default(now())
+  endedAt                DateTime?
+  feedbackSummary        String?  @db.Text
+  feedbackRecommendation String?  @db.Text
+  feedbackGeneratedAt    DateTime?
+  course                 Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  activity               Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  interventions          TeacherIntervention[]
+  classFeedback          ClassFeedback[]
   @@index([courseId, status])
 }
 
-model StudentFeedback {
-  id         String   @id @default(cuid())
-  courseId   String
-  sessionId  String
-  studentId  String
-  conceptId  String
-  clarity    Int
-  stillDoubt Boolean
-  comment    String?  @db.Text
-  createdAt  DateTime @default(now())
-  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  session    ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  concept    Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
-  @@unique([sessionId, studentId, conceptId])
+model ClassFeedback {
+  id        String   @id @default(cuid())
+  courseId  String
+  sessionId String
+  studentId String
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  session   ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  @@unique([sessionId, studentId])
   @@index([courseId, sessionId])
-}
-
-model FeedbackAggregate {
-  id               String   @id @default(cuid())
-  courseId         String
-  sessionId        String
-  conceptId        String
-  responseCount    Int
-  averageClarity   Float
-  stillDoubtCount  Int
-  stillDoubtRate   Float
-  generatedAt      DateTime @default(now())
-  course           Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  session          ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  concept          Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
-  @@unique([sessionId, conceptId])
-  @@index([courseId])
+  @@index([studentId])
 }
