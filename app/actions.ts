@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { db } from "@/src/lib/db";
+import { db, withDbRetry } from "@/src/lib/db";
 import { createSession, destroySession, hashPassword, verifyPassword, requireStudent, requireTeacher } from "@/src/lib/auth";
 import { createMaterial } from "@/src/lib/materials";
 import { tutorReply } from "@/src/lib/tutor";
@@ -23,7 +23,7 @@ function joinCode() { return crypto.randomBytes(4).toString("hex").toUpperCase()
 
 async function teacherCourse(courseId: string) {
   const user = await requireTeacher();
-  const course = await db.course.findFirst({ where: { id: courseId, teacherId: user.teacher.id } });
+  const course = await withDbRetry(() => db.course.findFirst({ where: { id: courseId, teacherId: user.teacher.id } }));
   if (!course) throw new Error("Curso no encontrado o sin permiso");
   return { user, course };
 }
@@ -134,12 +134,13 @@ export async function setMaterialStateAction(fd: FormData) {
   const materialId = required(fd, "materialId");
   const state = required(fd, "state");
   if (!["DRAFT", "ACTIVE", "RETIRED"].includes(state)) throw new Error("Estado inválido");
-  const material = await db.learningMaterial.findFirst({ where: { id: materialId, courseId } });
+  const material = await withDbRetry(() => db.learningMaterial.findFirst({ where: { id: materialId, courseId } }));
   if (!material) throw new Error("Material no encontrado");
   const allowed = material.state === "DRAFT" ? ["DRAFT", "ACTIVE", "RETIRED"] : material.state === "ACTIVE" ? ["ACTIVE", "RETIRED"] : ["RETIRED"];
   if (!allowed.includes(state)) throw new Error(`Transición de material inválida: ${material.state} → ${state}`);
-  await db.learningMaterial.update({ where: { id: materialId }, data: { state: state as any } });
+  await withDbRetry(() => db.learningMaterial.update({ where: { id: materialId }, data: { state: state as any } }));
   revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}#contenido`);
 }
 
 export async function sendMessageAction(fd: FormData) {
