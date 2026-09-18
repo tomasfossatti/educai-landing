@@ -25,7 +25,7 @@ The application is a monolith by design. There are no microservices, queues or e
 - `src/lib/auth.ts`: password hashing, sessions, role guards.
 - `src/lib/materials.ts`: file/text ingestion, extraction and chunk persistence.
 - `src/lib/rag.ts`: active-content retrieval.
-- `src/lib/ai.ts`: `AIProvider`, OpenAI provider, explicitly-labeled local dev provider.
+- `src/lib/ai.ts`: `AIProvider`, DeepSeek production provider, explicitly-labeled local dev provider.
 - `src/lib/tutor.ts`: context construction and tutor behavior.
 - `src/lib/analysis-schema.mjs`: structured analysis schema + runtime validator.
 - `src/lib/analysis.ts`: conversation analysis, signals, aggregation and recommendations.
@@ -99,7 +99,7 @@ If no course content supports the question, the tutor is instructed to say so in
 
 1. Load one student's conversation internally.
 2. Send de-identified conversation content/message IDs to the analysis provider; identity fields are not included.
-3. Request strict structured output describing:
+3. Request structured JSON output describing:
    - concepts;
    - `QUESTION`, `CONFUSION`, `REFORMULATION` signals;
    - evidence message IDs/snippets;
@@ -126,7 +126,7 @@ Explanation associations are only persisted when the model identifies an observa
 - Analytics use course-scoped pseudonyms.
 - Evidence snippets pass through basic PII redaction before persistence/display.
 - Minimum evidence threshold protects against presenting one person's interaction as a group pattern.
-- OpenAI requests use `store:false`.
+- DeepSeek's Responses API is used as a stateless API path; Educai sends only the bounded conversation/context required for each call.
 - Application logs do not intentionally log chat bodies.
 - Student UI explains aggregation and teacher visibility.
 - Student can delete their own conversation.
@@ -146,4 +146,4 @@ Relational deletes use cascade/set-null rules aligned to object ownership. Delet
 
 ## Deployment
 
-Any Node-compatible host with PostgreSQL works. For Vercel or other serverless hosts, provide `DATABASE_URL`, `SESSION_SECRET`, `ANALYTICS_PEPPER`, `OPENAI_API_KEY` and optional model/threshold settings. The current file-byte-in-Postgres choice is acceptable for a tiny pilot with upload limits; production should move binary objects to dedicated storage.
+Any Node-compatible host with PostgreSQL works. Provide `DATABASE_URL`, `SESSION_SECRET`, `ANALYTICS_PEPPER`, `DEEPSEEK_API_KEY` and optional model/threshold settings. The current file-byte-in-Postgres choice is acceptable for a tiny pilot with upload limits; production should move binary objects to dedicated storage.
