@@ -3,6 +3,7 @@
 import crypto from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/src/lib/db";
 import { createSession, destroySession, hashPassword, verifyPassword, requireStudent, requireTeacher } from "@/src/lib/auth";
 import { createMaterial } from "@/src/lib/materials";
@@ -132,8 +133,18 @@ export async function sendMessageAction(fd: FormData) {
   await db.message.create({ data: { conversationId: conversation.id, role: "STUDENT", content: text } });
   const reply = await tutorReply({ courseId: activity.courseId, courseName: activity.course.name, studentText: text, history: history.filter((m) => m.role === "STUDENT" || m.role === "ASSISTANT") as any });
   await db.message.create({ data: { conversationId: conversation.id, role: "ASSISTANT", content: reply.content, sourceChunkIds: reply.sourceChunkIds } });
-  await analyzeConversation(conversation.id);
-  redirect(`/student/chat/${activityId}`);
+
+  const conversationId = conversation.id;
+  after(async () => {
+    try {
+      await analyzeConversation(conversationId);
+    } catch (error) {
+      console.error("No se pudo actualizar el análisis pedagógico después del mensaje.", error);
+    }
+  });
+
+  revalidatePath(`/student/chat/${activityId}`);
+  redirect(`/student/chat/${activityId}#latest-message`);
 }
 
 export async function deleteConversationAction(fd: FormData) {
