@@ -6,7 +6,9 @@
 - `complete(messages)` for tutor responses;
 - `structured(request, validate)` for schema-constrained analysis.
 
-The OpenAI implementation is the production path. A clearly labeled deterministic `AI_PROVIDER=local` mode exists only to develop UI/RAG without external credentials; it does not pretend to provide production-quality semantic analysis.
+The DeepSeek implementation is the production path. A clearly labeled deterministic `AI_PROVIDER=local` mode exists only to develop UI/RAG without external credentials; it does not pretend to provide production-quality semantic analysis.
+
+The production provider uses DeepSeek's Responses API with `deepseek-flash` by default. The model remains configurable through `DEEPSEEK_MODEL`. Structured analysis requests use DeepSeek `json_schema` output and are validated again by Educai before persistence.
 
 ## Tutor behavior
 
@@ -28,7 +30,7 @@ The RAG service retrieves active content chunks. Their IDs are persisted on the 
 
 ## Conversation analysis
 
-The analyzer receives message IDs, roles and content, but not student name/email/profile data. It returns strict JSON matching `ANALYSIS_SCHEMA`.
+The analyzer receives message IDs, roles and content, but not student name/email/profile data. It returns JSON matching `ANALYSIS_SCHEMA`.
 
 Each concept contains:
 - concept name;
