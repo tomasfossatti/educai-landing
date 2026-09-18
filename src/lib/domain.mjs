@@ -1,5 +1,6 @@
 export const DEFAULT_MIN_PARTICIPANTS = 3;
 
+/** @returns {"NO_DATA" | "SUFFICIENT" | "INSUFFICIENT"} */
 export function evidenceState(participants, threshold = DEFAULT_MIN_PARTICIPANTS) {
   if (!Number.isFinite(participants) || participants <= 0) return "NO_DATA";
   return participants >= threshold ? "SUFFICIENT" : "INSUFFICIENT";
