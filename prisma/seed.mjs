@@ -66,12 +66,16 @@ async function main(){
   const corrInsight=await db.aggregatedInsight.create({data:{courseId:course.id,conceptId:corr.id,affectedParticipants:4,totalParticipants:5,proportion:.8,evidenceState:"SUFFICIENT",summary:"En 4 estudiantes/conversaciones independientes aparecen dificultades para diferenciar correlación de causalidad (80% de quienes participaron en conversaciones analizadas).",evidenceJson:corrEvidence,explanationJson:[{type:"CONCRETE_EXAMPLE",observedSignal:"EXPLICIT_CONFIRMATION",count:3},{type:"COMPARISON",observedSignal:"ADVANCED_WITHOUT_REPETITION",count:1}]}});
   await db.aggregatedInsight.create({data:{courseId:course.id,conceptId:selection.id,affectedParticipants:2,totalParticipants:5,proportion:.4,evidenceState:"INSUFFICIENT",summary:"Aparecen señales sobre sesgo de selección, pero todavía no hay suficiente evidencia para identificar un patrón agregado.",evidenceJson:[],explanationJson:[]}});
   const recommendation=await db.recommendation.create({data:{courseId:course.id,insightId:corrInsight.id,title:"Contrastar correlación y causalidad con tres casos",rationale:corrInsight.summary,actionText:"Antes de avanzar, dedicar 10 minutos a tres casos: uno correlacional, uno con variable de confusión y uno con evidencia causal. Pedir que el grupo clasifique cada caso y justifique la decisión.",status:"APPLIED"}});
-  const session=await db.classSession.create({data:{courseId:course.id,activityId:activity.id,title:"Clase 4 · De asociación a causalidad",status:"CLOSED",startedAt:new Date(Date.now()-86400000*2),endedAt:new Date(Date.now()-86400000*2+5400000)}});
+  const session=await db.classSession.create({data:{courseId:course.id,activityId:activity.id,title:"Clase 4 · De asociación a causalidad",status:"CLOSED",startedAt:new Date(Date.now()-86400000*2),endedAt:new Date(Date.now()-86400000*2+5400000),feedbackSummary:"La valoración general fue positiva. Los casos concretos ayudaron, aunque aparece una dificultad puntual cuando interviene una tercera variable.",feedbackRecommendation:"En la próxima clase, comenzá con un caso de variable de confusión y pedí que el grupo identifique primero la tercera variable antes de discutir causalidad.",feedbackGeneratedAt:new Date()}});
   await db.teacherIntervention.create({data:{courseId:course.id,insightId:corrInsight.id,recommendationId:recommendation.id,sessionId:session.id,actualAction:"Se trabajaron tres casos contrastantes en grupos pequeños y cada grupo justificó por qué había correlación, confusión o evidencia causal."}});
 
-  const feedbackRows=[{clarity:5,stillDoubt:false,comment:"Los casos ayudaron."},{clarity:4,stillDoubt:false,comment:"Ahora veo la diferencia."},{clarity:4,stillDoubt:false,comment:null},{clarity:3,stillDoubt:true,comment:"Todavía me cuesta cuando aparece una tercera variable."}];
-  for(let i=0;i<4;i++) await db.studentFeedback.create({data:{courseId:course.id,sessionId:session.id,studentId:students[i].student.id,conceptId:corr.id,...feedbackRows[i]}});
-  await db.feedbackAggregate.create({data:{courseId:course.id,sessionId:session.id,conceptId:corr.id,responseCount:4,averageClarity:4,stillDoubtCount:1,stillDoubtRate:.25}});
+  const feedbackRows=[
+    {rating:4,comment:"Los casos prácticos me ayudaron a entenderlo."},
+    {rating:4,comment:"La comparación entre ejemplos fue clara."},
+    {rating:3,comment:null},
+    {rating:2,comment:"Fui un poco rápido cuando apareció la tercera variable."}
+  ];
+  for(let i=0;i<4;i++) await db.classFeedback.create({data:{courseId:course.id,sessionId:session.id,studentId:students[i].student.id,...feedbackRows[i]}});
 
   console.log("Educai demo seeded");
   console.log("Teacher: docente@educai.demo / educai-demo");
