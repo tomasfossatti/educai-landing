@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { requireTeacher } from "@/src/lib/auth";
+import { createCourseAction } from "../../../actions";
+export default async function NewCourse(){await requireTeacher();return <div className="shell"><div className="auth" style={{maxWidth:620}}><div className="card stack"><Link className="link" href="/teacher">← Mis cursos</Link><div><div className="label">Nuevo curso</div><h1>Crear contexto académico</h1><p className="muted">Curso es el contenedor principal del MVP: contenido, actividades, conversaciones, insights, intervención y feedback.</p></div><form action={createCourseAction}><label>Nombre<input name="name" required minLength={3} placeholder="Sociología I"/></label><label>Descripción<textarea name="description" required minLength={10} placeholder="Qué se trabaja y para quién."/></label><button className="btn">Crear curso</button></form></div></div></div>}

@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { loginAction } from "../actions";
+export default function Login(){return <div className="shell"><div className="auth"><div className="card stack"><div><div className="label">Educai</div><h1>Ingresar</h1><p className="muted">Volvé a tu curso y continuá desde donde estabas.</p></div><form action={loginAction}><label>Email<input name="email" type="email" autoComplete="email" required/></label><label>Contraseña<input name="password" type="password" autoComplete="current-password" required minLength={8}/></label><button className="btn">Ingresar</button></form><div className="small muted">¿No tenés cuenta? <Link className="link" href="/register">Crear cuenta</Link></div></div></div></div>}
