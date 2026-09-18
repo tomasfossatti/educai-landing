@@ -99,9 +99,33 @@ export async function createActivityAction(fd: FormData) {
 export async function createMaterialAction(fd: FormData) {
   const courseId = required(fd, "courseId");
   await teacherCourse(courseId);
+  const title = required(fd, "title", 3);
   const file = fd.get("file");
-  await createMaterial({ courseId, title: required(fd, "title", 3), state: value(fd, "state") === "DRAFT" ? "DRAFT" : "ACTIVE", text: value(fd, "text"), file: file instanceof File ? file : null });
+  const uploadedFile = file instanceof File && file.size > 0 ? file : null;
+  const fileName = uploadedFile?.name ?? null;
+
+  const recentDuplicate = await db.learningMaterial.findFirst({
+    where: {
+      courseId,
+      title,
+      createdAt: { gte: new Date(Date.now() - 15_000) },
+      ...(fileName ? { versions: { some: { fileName } } } : {})
+    },
+    select: { id: true }
+  });
+
+  if (!recentDuplicate) {
+    await createMaterial({
+      courseId,
+      title,
+      state: value(fd, "state") === "DRAFT" ? "DRAFT" : "ACTIVE",
+      text: value(fd, "text"),
+      file: uploadedFile
+    });
+  }
+
   revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}#contenido`);
 }
 
 export async function setMaterialStateAction(fd: FormData) {
