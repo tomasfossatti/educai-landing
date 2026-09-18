@@ -9,7 +9,7 @@ Educai turns student–AI learning conversations into aggregated pedagogical evi
 - Validated text/PDF/Markdown content with versions and chunks.
 - Native multi-turn course tutor.
 - Active-content RAG and source-chunk traceability.
-- Provider abstraction with OpenAI Responses API support.
+- Provider abstraction with DeepSeek Responses API support.
 - Schema-validated conversation analysis.
 - Pseudonymous aggregation by independent participant.
 - First-class no-data / insufficient / sufficient evidence states.
@@ -27,7 +27,7 @@ Read `docs/MVP_SPEC.md`, `docs/ARCHITECTURE.md`, `docs/AI_BEHAVIOR.md` and `docs
 - Node.js 20.18+
 - npm
 - PostgreSQL 16+ (or Docker)
-- OpenAI API key for real AI chat/analysis
+- DeepSeek API key for real AI chat/analysis
 
 ## 1. Install
 
@@ -69,12 +69,12 @@ npm run db:migrate -- --name describe_the_change
 Production/pilot path:
 
 ```env
-AI_PROVIDER="openai"
-OPENAI_API_KEY="sk-..."
-OPENAI_MODEL="gpt-5.6-luna"
+AI_PROVIDER="deepseek"
+DEEPSEEK_API_KEY="your-deepseek-api-key"
+DEEPSEEK_MODEL="deepseek-flash"
 ```
 
-`OPENAI_MODEL` is configurable. The provider uses the Responses API and sends `store:false`.
+`DEEPSEEK_MODEL` is configurable. The production provider uses DeepSeek's Responses API and structured `json_schema` output for conversation analysis. Educai validates that structured payload again before persistence.
 
 Development-only path without external credentials:
 
@@ -128,9 +128,9 @@ Set these environment variables in the host:
 DATABASE_URL=
 SESSION_SECRET=
 ANALYTICS_PEPPER=
-AI_PROVIDER=openai
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5.6-luna
+AI_PROVIDER=deepseek
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-flash
 INSIGHT_MIN_PARTICIPANTS=3
 ```
 
