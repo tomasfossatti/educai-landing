@@ -8,8 +8,8 @@ import { createSession, destroySession, hashPassword, verifyPassword, requireStu
 import { createMaterial } from "@/src/lib/materials";
 import { tutorReply } from "@/src/lib/tutor";
 import { analyzeConversation, refreshCourseInsights } from "@/src/lib/analysis";
-import { refreshFeedbackAggregate } from "@/src/lib/feedback";
-import { assertRecommendationTransition, validateFeedbackAssociation } from "@/src/lib/domain.mjs";
+import { refreshClassFeedbackInsight } from "@/src/lib/feedback";
+import { assertRecommendationTransition } from "@/src/lib/domain.mjs";
 
 function value(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim(); }
 function required(fd: FormData, key: string, min = 1) {
@@ -198,21 +198,17 @@ export async function registerInterventionAction(fd: FormData) {
 
 export async function submitFeedbackAction(fd: FormData) {
   const sessionId = required(fd, "sessionId");
-  const conceptId = required(fd, "conceptId");
-  const clarity = Number(required(fd, "clarity"));
-  if (!Number.isInteger(clarity) || clarity < 1 || clarity > 5) throw new Error("Claridad inválida");
-  const stillDoubt = value(fd, "stillDoubt") === "yes";
+  const rating = Number(required(fd, "rating"));
+  if (!Number.isInteger(rating) || rating < 1 || rating > 4) throw new Error("Valoración inválida");
   const session = await db.classSession.findUnique({ where: { id: sessionId } });
-  if (!session) throw new Error("Sesión no encontrada");
+  if (!session || session.status !== "CLOSED") throw new Error("La clase todavía no está disponible para feedback");
   const { user } = await studentEnrollment(session.courseId);
-  const concept = await db.concept.findFirst({ where: { id: conceptId, courseId: session.courseId } });
-  if (!concept) throw new Error("Concepto inválido");
-  validateFeedbackAssociation({ feedbackCourseId: session.courseId, sessionCourseId: session.courseId, conceptCourseId: concept.courseId });
-  await db.studentFeedback.upsert({
-    where: { sessionId_studentId_conceptId: { sessionId, studentId: user.student.id, conceptId } },
-    update: { clarity, stillDoubt, comment: value(fd, "comment") || null },
-    create: { courseId: session.courseId, sessionId, studentId: user.student.id, conceptId, clarity, stillDoubt, comment: value(fd, "comment") || null }
+  await db.classFeedback.upsert({
+    where: { sessionId_studentId: { sessionId, studentId: user.student.id } },
+    update: { rating, comment: value(fd, "comment") || null },
+    create: { courseId: session.courseId, sessionId, studentId: user.student.id, rating, comment: value(fd, "comment") || null }
   });
-  await refreshFeedbackAggregate(sessionId, conceptId);
+  await refreshClassFeedbackInsight(sessionId);
+  revalidatePath(`/teacher/courses/${session.courseId}`);
   redirect(`/student/courses/${session.courseId}`);
 }
