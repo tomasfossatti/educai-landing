@@ -22,6 +22,15 @@ async function inspect(page, label) {
   record(label, state);
   if (state.overflowX) throw new Error(`${label}: horizontal overflow ${state.scrollWidth}px > ${state.width}px`);
   if (!state.bodyBg || state.bodyBg === 'none') throw new Error(`${label}: Obsidian background missing`);
+  if (!state.colorScheme.includes('dark')) throw new Error(`${label}: dark color scheme missing (${state.colorScheme})`);
+}
+
+async function waitForCourseCode(page) {
+  const slots = page.locator('.course-code-slot input');
+  await slots.first().waitFor({ state: 'visible', timeout: 15000 });
+  const count = await slots.count();
+  if (count !== 8) throw new Error(`expected 8 course code slots, got ${count}`);
+  return slots;
 }
 
 async function login(page, email) {
@@ -96,8 +105,7 @@ await scenario('student-390', { width: 390, height: 844 }, async (page) => {
   await login(page, 'estudiante1@educai.demo');
   await inspect(page, 'student-home-390');
   if (await page.locator('.obsidian-command-trigger').count() !== 1) throw new Error('command trigger missing');
-  const slots = page.locator('.course-code-slot input');
-  if (await slots.count() !== 8) throw new Error(`expected 8 course code slots, got ${await slots.count()}`);
+  const slots = await waitForCourseCode(page);
   await slots.first().fill('DEMO2026');
   const hiddenCode = await page.locator('input[type="hidden"][name="joinCode"]').inputValue();
   if (hiddenCode !== 'DEMO2026') throw new Error(`segmented course code failed: ${hiddenCode}`);
@@ -134,8 +142,7 @@ await scenario('student-390', { width: 390, height: 844 }, async (page) => {
 await scenario('student-320', { width: 320, height: 700 }, async (page) => {
   await login(page, 'estudiante2@educai.demo');
   await inspect(page, 'student-home-320');
-  const slots = page.locator('.course-code-slot input');
-  if (await slots.count() !== 8) throw new Error('course code slots missing at 320px');
+  await waitForCourseCode(page);
   await page.screenshot({ path: `${out}/student-home-320.png`, fullPage: false });
 });
 
@@ -153,6 +160,14 @@ await scenario('teacher-1440', { width: 1440, height: 1000 }, async (page) => {
     await inspect(page, `teacher-${view}-1440`);
     const active = page.locator('.course-nav-link[aria-current="page"]');
     if (await active.count() !== 1) throw new Error(`teacher ${view}: active nav missing`);
+    if (view === 'summary') {
+      const courseCode = page.locator('.course-code').first();
+      if (await courseCode.count()) {
+        const codeStyle = await courseCode.evaluate((el) => ({ background: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color }));
+        record('teacher-course-code-style', codeStyle);
+      }
+      await page.screenshot({ path: `${out}/teacher-summary-1440.png`, fullPage: true });
+    }
     if (view === 'insights' || view === 'classes') await page.screenshot({ path: `${out}/teacher-${view}-1440.png`, fullPage: true });
   }
 });
