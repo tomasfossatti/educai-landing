@@ -24,7 +24,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.63.0
           npx playwright install --with-deps chromium
-      - name: Run Obsidian production browser checks
+      - name: Run final Obsidian production browser checks
         run: node scripts/obsidian-prod-check.mjs
       - name: Upload visual report
         if: always()
