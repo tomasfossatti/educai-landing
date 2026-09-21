@@ -1,4 +1,4 @@
-name: Header logo production check
+name: Teacher color system production check
 
 on:
   push:
@@ -24,12 +24,12 @@ jobs:
         run: |
           npm install --no-save playwright@1.63.0
           npx playwright install --with-deps chromium
-      - name: Run header logo production checks
-        run: node scripts/header-logo-check.mjs
+      - name: Run teacher color system production checks
+        run: node scripts/teacher-color-system-check.mjs
       - name: Upload visual report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: educai-header-logo-check
-          path: artifacts/header-logo
+          name: educai-teacher-color-system-check
+          path: artifacts/teacher-colors
           if-no-files-found: warn
