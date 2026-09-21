@@ -27,29 +27,46 @@ async function inspect(browser, label, viewport) {
   page.on('pageerror', e => pageErrors.push(String(e)));
   try {
     await login(page);
-    const logo = page.locator('.brand-logo');
-    await logo.waitFor({ state: 'visible', timeout: 20000 });
-    const data = await logo.evaluate(el => {
+    const wordmark = page.locator('.brand-wordmark');
+    await wordmark.waitFor({ state: 'visible', timeout: 20000 });
+    const data = await wordmark.evaluate(el => {
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
+      const base = el.querySelector('.brand-wordmark-base');
+      const ai = el.querySelector('.brand-wordmark-ai');
+      const aiStyle = ai ? getComputedStyle(ai) : null;
+      const baseStyle = base ? getComputedStyle(base) : null;
+      const brand = el.closest('.brand');
       return {
         x: r.x, y: r.y, width: r.width, height: r.height,
-        naturalWidth: el.naturalWidth, naturalHeight: el.naturalHeight,
-        src: el.getAttribute('src'), objectFit: s.objectFit,
+        text: el.textContent,
+        fontSize: parseFloat(s.fontSize),
+        fontWeight: s.fontWeight,
+        lineHeight: s.lineHeight,
+        whiteSpace: s.whiteSpace,
+        baseColor: baseStyle?.color ?? null,
+        aiBackgroundImage: aiStyle?.backgroundImage ?? null,
+        aiBackgroundClip: aiStyle?.backgroundClip ?? null,
+        aiWebkitTextFill: aiStyle?.webkitTextFillColor ?? null,
+        imageCount: brand?.querySelectorAll('img').length ?? -1,
         topbarHeight: document.querySelector('.topbar')?.getBoundingClientRect().height ?? null,
         viewportWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
       };
     });
-    if (!data.src?.includes('/educai-logo-header.png')) throw new Error(`${label}: unexpected logo src ${data.src}`);
-    if (data.naturalWidth !== 701 || data.naturalHeight !== 200) throw new Error(`${label}: unexpected natural size ${data.naturalWidth}x${data.naturalHeight}`);
-    const expectedHeight = viewport.width <= 620 ? 32 : 36;
-    if (Math.abs(data.height - expectedHeight) > 1) throw new Error(`${label}: rendered height ${data.height}px, expected ${expectedHeight}px`);
-    if (data.width < 95 || data.width > 150) throw new Error(`${label}: suspicious rendered width ${data.width}px`);
-    if (data.objectFit !== 'contain') throw new Error(`${label}: object-fit is ${data.objectFit}`);
+
+    if (data.text !== 'educai') throw new Error(`${label}: unexpected wordmark text ${data.text}`);
+    if (data.imageCount !== 0) throw new Error(`${label}: brand still contains an image`);
+    const expectedSize = viewport.width <= 620 ? 27 : 30;
+    if (Math.abs(data.fontSize - expectedSize) > 1) throw new Error(`${label}: font-size ${data.fontSize}px, expected ${expectedSize}px`);
+    if (!data.aiBackgroundImage || data.aiBackgroundImage === 'none') throw new Error(`${label}: ai gradient missing`);
+    if (data.aiBackgroundClip !== 'text') throw new Error(`${label}: ai background-clip is ${data.aiBackgroundClip}`);
+    if (data.whiteSpace !== 'nowrap') throw new Error(`${label}: wordmark can wrap`);
+    if (data.width < 70 || data.width > 150) throw new Error(`${label}: suspicious wordmark width ${data.width}px`);
     if (data.scrollWidth > data.viewportWidth) throw new Error(`${label}: horizontal overflow`);
-    if (data.topbarHeight && data.topbarHeight > 80) throw new Error(`${label}: topbar grew unexpectedly to ${data.topbarHeight}px`);
+    if (data.topbarHeight && data.topbarHeight > 70) throw new Error(`${label}: topbar grew unexpectedly to ${data.topbarHeight}px`);
     if (consoleErrors.length || pageErrors.length) throw new Error(`${label}: browser errors ${JSON.stringify({consoleErrors,pageErrors})}`);
+
     results.push({ label, ...data, consoleErrors, pageErrors });
     await page.screenshot({ path: `${out}/${label}.png`, fullPage: false });
   } catch (e) {
