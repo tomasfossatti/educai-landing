@@ -1,0 +1,31 @@
+name: Production visual check
+
+on:
+  push:
+    branches: [qa-prod-visual-check]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run production browser checks
+        run: node scripts/prod-visual-check.mjs
+      - name: Upload visual report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: educai-production-visual-check
+          path: artifacts/prod-visual
+          if-no-files-found: warn
