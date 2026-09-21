@@ -1,0 +1,378 @@
+/* Educai chromatic system — single source of truth for dark surfaces and semantic color. */
+:root {
+  --bg-base: #070A12;
+  --bg-elevated: #0A0F1C;
+
+  --surface-1: #101726;
+  --surface-2: #151E32;
+  --surface-3: #1A2540;
+  --surface-secondary: #0D1322;
+
+  --border-subtle: #202A3D;
+  --border-strong: #32446B;
+
+  --text-primary: #F1F4FB;
+  --text-secondary: #A7B1C6;
+  --text-tertiary: #8E99B0;
+  --text-disabled: #626D83;
+
+  --primary: #7896EE;
+  --primary-hover: #8BA7F6;
+  --primary-muted: #17213B;
+  --primary-border: #34497D;
+
+  --brand-pink: #EC2B91;
+  --brand-pink-muted: #321426;
+
+  --success: #51C6A5;
+  --success-muted: #102922;
+
+  --warning: #E4B766;
+  --danger: #E26D78;
+
+  --eyebrow: #829DE8;
+  --privacy-text: #94A0B8;
+  --neutral-badge-text: #AAB4C7;
+  --neutral-badge-bg: #151B29;
+  --neutral-badge-border: #2A3448;
+
+  /* Map the pre-existing Educai/Obsidian tokens onto the same system. */
+  --obsidian-bg: var(--bg-base);
+  --obsidian-bg-2: var(--bg-elevated);
+  --obsidian-panel: var(--surface-1);
+  --obsidian-panel-strong: var(--surface-2);
+  --obsidian-border: var(--border-subtle);
+  --obsidian-border-strong: var(--border-strong);
+  --obsidian-text: var(--text-primary);
+  --obsidian-muted: var(--text-secondary);
+  --obsidian-faint: var(--text-tertiary);
+  --obsidian-primary: var(--primary);
+  --obsidian-primary-2: var(--primary-hover);
+  --obsidian-success: var(--success);
+  --obsidian-warning: var(--warning);
+  --obsidian-danger: var(--danger);
+  --obsidian-ring: var(--primary-hover);
+
+  /* Keep legacy components on the same semantic scale. */
+  --color-bg: var(--bg-base);
+  --color-surface: var(--surface-1);
+  --color-surface-muted: var(--surface-secondary);
+  --color-surface-elevated: var(--surface-2);
+  --color-surface-strong: var(--surface-3);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-tertiary);
+  --color-border: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-muted);
+  --color-primary-ink: var(--primary-hover);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-focus: rgba(120, 150, 238, .28);
+
+  --bg: var(--bg-base);
+  --surface: var(--surface-1);
+  --surface-subtle: var(--surface-secondary);
+  --surface-strong: var(--surface-3);
+  --ink: var(--text-primary);
+  --ink-soft: var(--text-secondary);
+  --muted: var(--text-tertiary);
+  --line: var(--border-subtle);
+  --line-strong: var(--border-strong);
+  --brand: var(--primary);
+  --brand-hover: var(--primary-hover);
+  --brand-soft: var(--primary-muted);
+  --brand-ink: var(--primary-hover);
+  --ok: var(--success);
+  --ok-soft: var(--success-muted);
+  --warn: var(--warning);
+  --danger: var(--danger);
+  --focus: var(--color-focus);
+}
+
+html {
+  background: var(--bg-base) !important;
+}
+
+body {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(82, 104, 190, .13), transparent 34%),
+    radial-gradient(circle at 92% 18%, rgba(25, 103, 130, .08), transparent 30%),
+    var(--bg-base) !important;
+  color: var(--text-primary) !important;
+}
+
+/* The chromatic refactor uses only the controlled background above. */
+body::before,
+.obsidian-ambient {
+  display: none !important;
+}
+
+::selection {
+  background: rgba(120, 150, 238, .34) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Header and brand */
+.topbar {
+  background: color-mix(in srgb, var(--bg-base) 96%, transparent) !important;
+  border-bottom-color: var(--border-subtle) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.brand-wordmark-base {
+  color: var(--text-primary) !important;
+}
+
+.brand-wordmark-ai {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--brand-pink) 74%, var(--brand-pink) 100%) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+.user-menu-summary {
+  background: transparent !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+}
+
+.user-menu-summary strong {
+  color: var(--text-primary) !important;
+}
+
+.user-menu-summary small {
+  color: var(--text-tertiary) !important;
+}
+
+.user-menu-summary:hover,
+.user-menu-summary:focus-visible,
+.user-menu[open] .user-menu-summary {
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+.user-menu-popover {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+
+.user-menu-popover a,
+.user-menu-popover button {
+  color: var(--text-secondary) !important;
+}
+
+.user-menu-popover a:hover,
+.user-menu-popover button:hover,
+.user-menu-popover a:focus-visible,
+.user-menu-popover button:focus-visible {
+  background: var(--surface-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Global text hierarchy. */
+h1,
+h2,
+h3,
+strong {
+  color: var(--text-primary) !important;
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+.eyebrow,
+.label {
+  color: var(--eyebrow) !important;
+}
+
+/* Teacher dashboard — preserve geometry, replace only the chromatic system. */
+.teacher-dashboard {
+  --teacher-text-primary: var(--text-primary);
+  --teacher-text-secondary: var(--text-secondary);
+  --teacher-text-tertiary: var(--text-tertiary);
+  --teacher-card-bg: var(--surface-1);
+  --teacher-card-hover: var(--surface-2);
+}
+
+.teacher-dashboard .teacher-dashboard-header .eyebrow,
+.teacher-dashboard .teacher-courses-heading .label {
+  color: var(--eyebrow) !important;
+}
+
+/* If an existing brand underline is present, bind it to the Educai signature pink. */
+.teacher-dashboard .teacher-dashboard-header .eyebrow::after {
+  background: var(--brand-pink) !important;
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-dashboard-header h1,
+.teacher-dashboard .teacher-courses-heading h2,
+.teacher-dashboard .teacher-course-card-header h3 {
+  color: var(--text-primary) !important;
+}
+
+.teacher-dashboard .teacher-dashboard-header p,
+.teacher-dashboard .teacher-courses-heading p,
+.teacher-dashboard .teacher-course-description {
+  color: var(--text-secondary) !important;
+}
+
+/* Primary CTA: flat functional primary, no decorative gradient or glow. */
+.teacher-dashboard .teacher-create-course,
+.teacher-dashboard .teacher-create-course.btn.secondary {
+  background: var(--primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--primary-hover) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.teacher-dashboard .teacher-create-course:hover,
+.teacher-dashboard .teacher-create-course:focus-visible,
+.teacher-dashboard .teacher-create-course.btn.secondary:hover,
+.teacher-dashboard .teacher-create-course.btn.secondary:focus-visible {
+  background: var(--primary-hover) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--primary-hover) !important;
+  box-shadow: 0 0 0 3px var(--color-focus) !important;
+  filter: none !important;
+}
+
+/* Course cards: one component, one surface scale. */
+.teacher-dashboard .teacher-course-card {
+  background: var(--surface-1) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.teacher-dashboard .teacher-course-card::before {
+  content: none !important;
+  display: none !important;
+}
+
+.teacher-dashboard .teacher-course-card:hover {
+  background: var(--surface-2) !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-course-card:focus-visible {
+  outline-color: var(--primary-hover) !important;
+}
+
+.teacher-dashboard .teacher-course-card.has-evidence,
+.teacher-dashboard .teacher-course-card.has-evidence:hover {
+  background: var(--surface-1) !important;
+  border-color: var(--primary-border) !important;
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-course-card.has-evidence:hover {
+  background: var(--surface-2) !important;
+}
+
+.teacher-dashboard .teacher-course-divider {
+  background: var(--border-subtle) !important;
+  opacity: .72;
+}
+
+/* Status badges */
+.teacher-dashboard .teacher-status-badge {
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-status-badge.neutral {
+  color: var(--neutral-badge-text) !important;
+  background: var(--neutral-badge-bg) !important;
+  border-color: var(--neutral-badge-border) !important;
+}
+
+.teacher-dashboard .teacher-status-badge.evidence {
+  color: var(--primary-hover) !important;
+  background: var(--primary-muted) !important;
+  border-color: var(--primary-border) !important;
+}
+
+.teacher-dashboard .teacher-status-badge.evidence svg {
+  color: var(--primary-hover) !important;
+}
+
+.teacher-dashboard .teacher-status-badge.ok {
+  color: var(--success) !important;
+  background: var(--success-muted) !important;
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border-subtle)) !important;
+}
+
+.teacher-dashboard .teacher-status-badge.warn {
+  color: var(--warning) !important;
+  background: var(--surface-secondary) !important;
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border-subtle)) !important;
+}
+
+/* Metadata stays readable but subordinate. */
+.teacher-dashboard .teacher-course-meta {
+  color: var(--text-tertiary) !important;
+}
+
+.teacher-dashboard .teacher-course-meta strong {
+  color: var(--text-secondary) !important;
+}
+
+/* Secondary CTA: compact indigo surface, deliberately below Crear curso. */
+.teacher-dashboard .teacher-course-cta {
+  background: var(--primary-muted) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--primary-hover) !important;
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-course-card:hover .teacher-course-cta,
+.teacher-dashboard .teacher-course-card:focus-visible .teacher-course-cta {
+  background: var(--surface-2) !important;
+  border-color: var(--primary-border) !important;
+  color: var(--primary-hover) !important;
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-course-card:active .teacher-course-cta {
+  background: var(--surface-3) !important;
+}
+
+/* Privacy is contextual, not an alert. Success green is reserved for its semantic indicator. */
+.teacher-dashboard .teacher-dashboard-privacy {
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--privacy-text) !important;
+  box-shadow: none !important;
+}
+
+.teacher-dashboard .teacher-dashboard-privacy::before {
+  background: var(--success) !important;
+  box-shadow: none !important;
+}
+
+/* Keep functional interaction colors consistent where generic buttons appear on this screen. */
+.teacher-dashboard .btn:not(.teacher-create-course) {
+  border-color: var(--border-subtle) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teacher-dashboard .teacher-course-card,
+  .teacher-dashboard .teacher-course-cta,
+  .teacher-dashboard .teacher-create-course {
+    transition: none !important;
+  }
+}
