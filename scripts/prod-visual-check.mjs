@@ -14,7 +14,7 @@ async function inspect(page, label) {
     overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
-    bodyText: document.body.innerText.slice(0, 900),
+    bodyText: document.body.innerText.slice(0, 1200),
   }));
   record(label, state);
   if (state.overflowX) throw new Error(`${label}: horizontal overflow ${state.scrollWidth}px > ${state.width}px`);
@@ -32,9 +32,13 @@ async function login(page, email) {
   await page.waitForLoadState('networkidle');
 }
 
-async function firstTeacherCourse(page) {
+async function demoTeacherCourse(page) {
+  const demo = page.getByRole('link').filter({ hasText: 'Sociología I · Demo' }).first();
+  const href = await demo.getAttribute('href');
+  if (href) return href.split('?')[0];
   const hrefs = await page.locator('a[href^="/teacher/courses/"]').evaluateAll((els) => els.map((a) => a.getAttribute('href')));
-  return hrefs.find((href) => href && href !== '/teacher/courses/new');
+  const fallback = hrefs.find((value) => value && value !== '/teacher/courses/new');
+  return fallback?.split('?')[0] ?? null;
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -61,6 +65,7 @@ await scenario('public-desktop', { width: 1440, height: 1000 }, async (page) => 
   await page.screenshot({ path: `${out}/login-1440.png`, fullPage: true });
   await page.goto(`${BASE}/register`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'register-1440');
+  await page.screenshot({ path: `${out}/register-1440.png`, fullPage: true });
 });
 
 await scenario('student-390', { width: 390, height: 844 }, async (page) => {
@@ -77,8 +82,8 @@ await scenario('student-390', { width: 390, height: 844 }, async (page) => {
   await inspect(page, 'student-course-390');
   await page.screenshot({ path: `${out}/student-course-390.png`, fullPage: true });
 
-  let activity = page.getByRole('link', { name: 'Continuar actividad' }).first();
-  if (await activity.count() === 0) activity = page.getByRole('link', { name: 'Empezar actividad' }).first();
+  const activity = page.locator('a[href^="/student/chat/"]').first();
+  if (await activity.count() !== 1) throw new Error('student chat link not found');
   await Promise.all([
     page.waitForURL(/\/student\/chat\/[^/?#]+$/, { timeout: 120000 }),
     activity.click(),
@@ -89,6 +94,8 @@ await scenario('student-390', { width: 390, height: 844 }, async (page) => {
   const box = await composer.boundingBox();
   record('student-chat-composer-390', { box, viewport: page.viewportSize() });
   if (!box) throw new Error('student chat composer not found');
+  const textarea = page.getByLabel('Tu mensaje');
+  if (!(await textarea.isVisible())) throw new Error('student chat textarea not visible');
   await page.screenshot({ path: `${out}/student-chat-390.png`, fullPage: false });
 });
 
@@ -108,30 +115,37 @@ await scenario('teacher-1440', { width: 1440, height: 1000 }, async (page) => {
   await login(page, 'docente@educai.demo');
   await inspect(page, 'teacher-home-1440');
   await page.screenshot({ path: `${out}/teacher-home-1440.png`, fullPage: true });
-  const target = await firstTeacherCourse(page);
-  if (!target) throw new Error('teacher course link not found');
+  const target = await demoTeacherCourse(page);
+  if (!target) throw new Error('teacher demo course link not found');
 
-  await page.goto(`${BASE}${target}`, { waitUntil: 'networkidle', timeout: 120000 });
-  await inspect(page, 'teacher-summary-1440');
-  await page.screenshot({ path: `${out}/teacher-summary-1440.png`, fullPage: true });
-
-  for (const view of ['contenido', 'actividades', 'insights', 'clases', 'configuracion']) {
+  const views = [
+    ['summary', 'teacher-summary-1440'],
+    ['content', 'teacher-content-1440'],
+    ['activities', 'teacher-activities-1440'],
+    ['insights', 'teacher-insights-1440'],
+    ['classes', 'teacher-classes-1440'],
+    ['settings', 'teacher-settings-1440'],
+  ];
+  for (const [view, label] of views) {
     await page.goto(`${BASE}${target}?view=${view}`, { waitUntil: 'networkidle', timeout: 120000 });
-    await inspect(page, `teacher-${view}-1440`);
-    const active = page.locator('.course-nav .active');
-    if (await active.count() !== 1) throw new Error(`teacher ${view}: expected one active course nav item`);
+    await inspect(page, label);
+    const current = page.locator('.course-nav [aria-current="page"]');
+    if (await current.count() !== 1) throw new Error(`teacher ${view}: expected one aria-current nav item`);
+    await page.screenshot({ path: `${out}/${label}.png`, fullPage: true });
   }
 });
 
 await scenario('teacher-375', { width: 375, height: 812 }, async (page) => {
   await login(page, 'docente@educai.demo');
-  const target = await firstTeacherCourse(page);
-  if (!target) throw new Error('teacher course link not found');
-  await page.goto(`${BASE}${target}`, { waitUntil: 'networkidle', timeout: 120000 });
+  const target = await demoTeacherCourse(page);
+  if (!target) throw new Error('teacher demo course link not found');
+  await page.goto(`${BASE}${target}?view=summary`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'teacher-course-375');
   const nav = page.locator('.course-nav');
   if (await nav.count() !== 1) throw new Error('mobile course nav not found');
   record('teacher-mobile-nav-375', { text: await nav.innerText() });
+  const current = page.locator('.course-nav [aria-current="page"]');
+  if (await current.count() !== 1) throw new Error('mobile current nav item not found');
   await page.screenshot({ path: `${out}/teacher-course-375.png`, fullPage: false });
 });
 
