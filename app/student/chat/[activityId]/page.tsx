@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LockKeyhole } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireStudent } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
@@ -22,11 +23,11 @@ export default async function ChatPage({params}:{params:Promise<{activityId:stri
 
   return <div className="shell chat-page"><div className="chat-shell tutor-workspace">
     <header className="chat-header tutor-header">
-      <Link className="back-link" href={`/student/courses/${activity.courseId}`}>← {activity.course.name}</Link>
+      <Link className="back-link tutor-back-link" href={`/student/courses/${activity.courseId}`}>← {activity.course.name}</Link>
       <h1>{activity.title}</h1>
       <div className="tutor-context-row"><span className="status-text">En progreso</span><span aria-hidden="true">·</span><span>Tutor basado en contenido validado de {activity.course.name}</span></div>
       <div className="objective-summary"><strong>Objetivo</strong><p>{objective}</p>{hasMoreObjective&&<details><summary>Ver consigna completa</summary><p>{activity.description}</p></details>}</div>
-      <details className="privacy-disclosure"><summary>🔒 Conversación privada</summary><p><strong>Tu docente no puede leer esta conversación.</strong> Solo recibe patrones agregados de aprendizaje del grupo, sin acceso a este chat ni a un perfil individual.</p></details>
+      <details className="privacy-disclosure"><summary><LockKeyhole size={15} strokeWidth={1.9} aria-hidden="true"/><span>Conversación privada</span></summary><p><strong>Tu docente no puede leer esta conversación.</strong> Solo recibe patrones agregados de aprendizaje del grupo, sin acceso a este chat ni a un perfil individual.</p></details>
     </header>
 
     <ChatThread messages={messages.map(message=>({id:message.id,role:message.role,content:message.content}))}/>
