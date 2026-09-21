@@ -6,6 +6,7 @@ import "./ux-polish.css";
 import "./student-home-polish.css";
 import "./chat-workspace-polish.css";
 import "./chat-workspace-compat.css";
+import "./teacher-dashboard-polish.css";
 import Link from "next/link";
 import { currentUser } from "@/src/lib/auth";
 import { logoutAction } from "./actions";
