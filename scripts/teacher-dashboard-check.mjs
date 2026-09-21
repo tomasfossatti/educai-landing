@@ -18,6 +18,16 @@ async function login(page) {
   await page.waitForLoadState('networkidle');
 }
 
+async function keyboardFocusFirstCourse(page) {
+  await page.locator('body').click({ position: { x: 4, y: 4 } });
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => document.activeElement?.classList?.contains('teacher-course-card') || false);
+    if (focused) return true;
+  }
+  return false;
+}
+
 async function inspectViewport(browser, label, viewport) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
@@ -106,11 +116,12 @@ async function inspectViewport(browser, label, viewport) {
       await firstCard.hover();
       const arrowTransform = await arrow.evaluate(el => getComputedStyle(el).transform);
       if (!arrowTransform || arrowTransform === 'none') throw new Error(`${label}: CTA arrow does not move on hover`);
-      await firstCard.focus();
-      const focusStyles = await firstCard.evaluate(el => ({ outline: getComputedStyle(el).outlineStyle, width: getComputedStyle(el).outlineWidth }));
+      const keyboardFocused = await keyboardFocusFirstCourse(page);
+      if (!keyboardFocused) throw new Error(`${label}: course card could not be reached by keyboard`);
+      const focusStyles = await firstCard.evaluate(el => ({ outline: getComputedStyle(el).outlineStyle, width: getComputedStyle(el).outlineWidth, visible: el.matches(':focus-visible') }));
       const ctaFocusShadow = await cta.evaluate(el => getComputedStyle(el).boxShadow);
-      if (focusStyles.outline === 'none' || focusStyles.width === '0px') throw new Error(`${label}: course card focus-visible ring missing`);
-      if (!ctaFocusShadow || ctaFocusShadow === 'none') throw new Error(`${label}: focused card does not reinforce CTA affordance`);
+      if (!focusStyles.visible || focusStyles.outline === 'none' || focusStyles.width === '0px') throw new Error(`${label}: course card keyboard focus-visible ring missing`);
+      if (!ctaFocusShadow || ctaFocusShadow === 'none') throw new Error(`${label}: keyboard-focused card does not reinforce CTA affordance`);
     }
 
     if (viewport.width <= 520) {
@@ -124,6 +135,7 @@ async function inspectViewport(browser, label, viewport) {
     await page.screenshot({ path: `${out}/${label}.png`, fullPage: true });
   } catch (error) {
     failures.push(`${label}: ${error?.stack || error}`);
+    await page.screenshot({ path: `${out}/${label}-failure.png`, fullPage: true }).catch(()=>{});
   } finally {
     await context.close();
   }
