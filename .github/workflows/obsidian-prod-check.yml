@@ -10,7 +10,7 @@ permissions:
 jobs:
   verify-production:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,12 +26,14 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run final Obsidian production browser checks
         run: node scripts/obsidian-prod-check.mjs
+      - name: Run focused conversation workspace checks
+        run: node scripts/chat-workspace-check.mjs
       - name: Upload visual report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: educai-obsidian-production-check
-          path: artifacts/obsidian-prod
+          name: educai-conversation-workspace-check
+          path: |
+            artifacts/obsidian-prod
+            artifacts/chat-workspace
           if-no-files-found: warn
-
-# QA rerun: final chevron cleanup
