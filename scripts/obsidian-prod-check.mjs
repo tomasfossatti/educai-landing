@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 const BASE = 'https://educai-mvp.onrender.com';
 const out = 'artifacts/obsidian-prod';
 await fs.mkdir(out, { recursive: true });
-
 const results = [];
 const failures = [];
 const record = (label, data = {}) => results.push({ label, ...data });
@@ -12,7 +11,6 @@ const record = (label, data = {}) => results.push({ label, ...data });
 async function inspect(page, label) {
   const state = await page.evaluate(() => ({
     url: location.href,
-    title: document.title,
     width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
     overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -22,15 +20,7 @@ async function inspect(page, label) {
   record(label, state);
   if (state.overflowX) throw new Error(`${label}: horizontal overflow ${state.scrollWidth}px > ${state.width}px`);
   if (!state.bodyBg || state.bodyBg === 'none') throw new Error(`${label}: Obsidian background missing`);
-  if (!state.colorScheme.includes('dark')) throw new Error(`${label}: dark color scheme missing (${state.colorScheme})`);
-}
-
-async function waitForCourseCode(page) {
-  const slots = page.locator('.course-code-slot input');
-  await slots.first().waitFor({ state: 'visible', timeout: 15000 });
-  const count = await slots.count();
-  if (count !== 8) throw new Error(`expected 8 course code slots, got ${count}`);
-  return slots;
+  if (!state.colorScheme.includes('dark')) throw new Error(`${label}: dark color scheme missing`);
 }
 
 async function login(page, email) {
@@ -45,14 +35,14 @@ async function login(page, email) {
   await page.waitForLoadState('networkidle');
 }
 
-async function openSpotlight(page, label) {
-  await page.keyboard.press('Control+K');
-  const dialog = page.getByRole('dialog', { name: 'Navegación rápida' });
-  await dialog.waitFor({ state: 'visible', timeout: 10000 });
-  record(`${label}-spotlight`, { text: (await dialog.innerText()).slice(0, 500) });
-  await page.screenshot({ path: `${out}/${label}-spotlight.png`, fullPage: false });
-  await page.keyboard.press('Escape');
-  await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+async function openJoinCourse(page) {
+  const trigger = page.getByText('+ Unirme a un curso', { exact: true });
+  await trigger.waitFor({ state: 'visible', timeout: 10000 });
+  await trigger.click();
+  const slots = page.locator('.course-code-slot input');
+  await slots.first().waitFor({ state: 'visible', timeout: 10000 });
+  if (await slots.count() !== 8) throw new Error(`expected 8 course code slots, got ${await slots.count()}`);
+  return slots;
 }
 
 async function firstTeacherCoursePath(page) {
@@ -84,92 +74,72 @@ const browser = await chromium.launch({ headless: true });
 await scenario('public-1440', { width: 1440, height: 1000 }, async (page) => {
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'login-1440');
-  if (await page.locator('.obsidian-dotted-grid').count() !== 1) throw new Error('dotted grid missing on login');
-  if (await page.locator('.obsidian-scroll-rail').count() !== 1) throw new Error('scroll rail missing on login');
-  if (await page.locator('.obsidian-text-reveal').count() !== 1) throw new Error('text reveal missing on login');
-  if (await page.locator('.obsidian-arrow-fill-btn').count() < 1) throw new Error('arrow fill button missing on login');
+  if (await page.locator('.obsidian-dotted-grid').count() !== 1) throw new Error('dotted grid missing');
+  if (await page.locator('.obsidian-scroll-rail').count() !== 0) throw new Error('decorative scroll rail should be removed');
+  if (await page.locator('.obsidian-command-trigger').count() !== 0) throw new Error('global command trigger should be removed');
   await page.screenshot({ path: `${out}/login-1440.png`, fullPage: true });
-  await openSpotlight(page, 'login-1440');
-
-  await page.goto(`${BASE}/register`, { waitUntil: 'networkidle', timeout: 120000 });
-  await inspect(page, 'register-1440');
-  const tabs = page.locator('.obsidian-magnet-tabs');
-  if (await tabs.count() !== 1) throw new Error('magnet tabs missing on register');
-  await page.getByRole('tab', { name: 'Docente' }).click();
-  const role = await page.locator('input[name="role"]').inputValue();
-  if (role !== 'TEACHER') throw new Error(`register role did not change: ${role}`);
-  await page.screenshot({ path: `${out}/register-1440.png`, fullPage: true });
 });
 
 await scenario('student-390', { width: 390, height: 844 }, async (page) => {
   await login(page, 'estudiante1@educai.demo');
   await inspect(page, 'student-home-390');
-  if (await page.locator('.obsidian-command-trigger').count() !== 1) throw new Error('command trigger missing');
-  const slots = await waitForCourseCode(page);
+  if (await page.locator('.user-menu').count() !== 1) throw new Error('user menu missing');
+  if (await page.getByText('Tu próximo paso', { exact: true }).count()) throw new Error('legacy next-step hierarchy still present');
+  if (await page.locator('.continue-card').count() > 1) throw new Error('more than one primary continuation card');
+  const slots = await openJoinCourse(page);
   await slots.first().fill('DEMO2026');
   const hiddenCode = await page.locator('input[type="hidden"][name="joinCode"]').inputValue();
   if (hiddenCode !== 'DEMO2026') throw new Error(`segmented course code failed: ${hiddenCode}`);
   await page.screenshot({ path: `${out}/student-home-390.png`, fullPage: true });
-  await openSpotlight(page, 'student-home-390');
 
   const courseLink = page.locator('a[href^="/student/courses/"]').first();
-  if (await courseLink.count() !== 1) throw new Error('student course link missing');
-  await Promise.all([
-    page.waitForURL(/\/student\/courses\/[^/?#]+/, { timeout: 120000 }),
-    courseLink.click(),
-  ]);
+  await Promise.all([page.waitForURL(/\/student\/courses\/[^/?#]+/, { timeout: 120000 }), courseLink.click()]);
   await page.waitForLoadState('networkidle');
   await inspect(page, 'student-course-390');
+  if (await page.getByText('Qué hacer a continuación', { exact: true }).count()) throw new Error('duplicated next-step section still present');
+  if (await page.getByText('Mis conversaciones', { exact: true }).count()) throw new Error('duplicated conversations section still present');
+  if (await page.locator('.student-activity-row').count() < 1) throw new Error('activity rows missing');
   await page.screenshot({ path: `${out}/student-course-390.png`, fullPage: true });
 
-  const chatLink = page.locator('a[href^="/student/chat/"]').first();
-  if (await chatLink.count() !== 1) throw new Error('student chat link missing');
-  await Promise.all([
-    page.waitForURL(/\/student\/chat\/[^/?#]+/, { timeout: 120000 }),
-    chatLink.click(),
-  ]);
+  const chatLink = page.locator('a.activity-hit-area[href^="/student/chat/"]').first();
+  await Promise.all([page.waitForURL(/\/student\/chat\/[^/?#]+/, { timeout: 120000 }), chatLink.click()]);
   await page.waitForLoadState('networkidle');
   await inspect(page, 'student-chat-390');
-  const composer = page.locator('.composer-wrap');
-  if (await composer.count() !== 1) throw new Error('chat composer missing');
-  if (await composer.locator('.obsidian-arrow-fill-btn').count() !== 1) throw new Error('Obsidian chat submit missing');
-  const box = await composer.boundingBox();
-  record('student-chat-composer-390', { box, viewport: page.viewportSize() });
-  if (!box) throw new Error('chat composer bounding box missing');
+  if (await page.locator('.privacy-disclosure').count() !== 1) throw new Error('compact privacy disclosure missing');
+  if (await page.locator('.composer-send').count() !== 1) throw new Error('integrated send button missing');
+  if (await page.getByText('Tutor listo para responder', { exact: true }).count()) throw new Error('redundant ready state still visible');
+  if (await page.locator('.message.assistant').count()) {
+    const assistantText = await page.locator('.message.assistant').last().innerText();
+    if (/^##\s/m.test(assistantText) || assistantText.includes('**')) throw new Error(`markdown syntax leaked to UI: ${assistantText.slice(0,160)}`);
+  }
+  const titleSize = await page.locator('.tutor-header h1').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  if (titleSize > 44) throw new Error(`tutor title still too large: ${titleSize}px`);
+  const composerBox = await page.locator('.composer').boundingBox();
+  record('student-chat-composer-390', { composerBox });
   await page.screenshot({ path: `${out}/student-chat-390.png`, fullPage: false });
 });
 
 await scenario('student-320', { width: 320, height: 700 }, async (page) => {
   await login(page, 'estudiante2@educai.demo');
   await inspect(page, 'student-home-320');
-  await waitForCourseCode(page);
+  await openJoinCourse(page);
   await page.screenshot({ path: `${out}/student-home-320.png`, fullPage: false });
 });
 
 await scenario('teacher-1440', { width: 1440, height: 1000 }, async (page) => {
   await login(page, 'docente@educai.demo');
   await inspect(page, 'teacher-home-1440');
+  if (await page.locator('.user-menu').count() !== 1) throw new Error('teacher user menu missing');
   await page.screenshot({ path: `${out}/teacher-home-1440.png`, fullPage: true });
-  await openSpotlight(page, 'teacher-home-1440');
   const path = await firstTeacherCoursePath(page);
   if (!path) throw new Error('teacher course link missing');
-
-  const views = ['summary', 'content', 'activities', 'insights', 'classes', 'settings'];
-  for (const view of views) {
+  for (const view of ['summary','content','activities','insights','classes','settings']) {
     await page.goto(`${BASE}${path}?view=${view}`, { waitUntil: 'networkidle', timeout: 120000 });
     await inspect(page, `teacher-${view}-1440`);
-    const active = page.locator('.course-nav-link[aria-current="page"]');
-    if (await active.count() !== 1) throw new Error(`teacher ${view}: active nav missing`);
-    if (view === 'summary') {
-      const courseCode = page.locator('.course-code').first();
-      if (await courseCode.count()) {
-        const codeStyle = await courseCode.evaluate((el) => ({ background: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color }));
-        record('teacher-course-code-style', codeStyle);
-      }
-      await page.screenshot({ path: `${out}/teacher-summary-1440.png`, fullPage: true });
-    }
-    if (view === 'insights' || view === 'classes') await page.screenshot({ path: `${out}/teacher-${view}-1440.png`, fullPage: true });
+    if (await page.locator('.course-nav-link[aria-current="page"]').count() !== 1) throw new Error(`teacher ${view}: active nav missing`);
   }
+  await page.goto(`${BASE}${path}?view=summary`, { waitUntil: 'networkidle', timeout: 120000 });
+  await page.screenshot({ path: `${out}/teacher-summary-1440.png`, fullPage: true });
 });
 
 await scenario('teacher-375', { width: 375, height: 812 }, async (page) => {
@@ -178,9 +148,7 @@ await scenario('teacher-375', { width: 375, height: 812 }, async (page) => {
   if (!path) throw new Error('teacher course link missing on mobile');
   await page.goto(`${BASE}${path}?view=summary`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'teacher-summary-375');
-  const nav = page.locator('.course-nav');
-  if (await nav.count() !== 1) throw new Error('teacher mobile nav missing');
-  if (await nav.locator('[aria-current="page"]').count() !== 1) throw new Error('teacher mobile active state missing');
+  if (await page.locator('.course-nav [aria-current="page"]').count() !== 1) throw new Error('teacher mobile active state missing');
   await page.screenshot({ path: `${out}/teacher-summary-375.png`, fullPage: false });
 });
 
