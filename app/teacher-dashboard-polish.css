@@ -90,7 +90,7 @@
 .teacher-dashboard .teacher-course-card {
   position: relative;
   display: grid !important;
-  grid-template-rows: auto minmax(50px, auto) 1px auto auto;
+  grid-template-rows: auto minmax(50px, auto) auto auto auto;
   gap: 0 !important;
   min-height: 0 !important;
   padding: 24px 26px !important;
@@ -239,11 +239,13 @@
   min-height: 40px;
   margin: 20px 0 -6px -10px;
   padding: 0 10px;
+  border: 1px solid rgba(163, 184, 255, .07);
   border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .025);
   color: #abc1ff !important;
   font-size: 13px;
   font-weight: 760;
-  transition: color var(--motion-fast) ease, background var(--motion-fast) ease, transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+  transition: color var(--motion-fast) ease, background var(--motion-fast) ease, border-color var(--motion-fast) ease, transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
 .teacher-dashboard .teacher-course-cta-arrow {
   display: inline-block;
@@ -252,6 +254,7 @@
 .teacher-dashboard .teacher-course-card:hover .teacher-course-cta {
   color: #d9e4ff !important;
   background: rgba(116, 143, 233, .075);
+  border-color: rgba(145, 171, 255, .15);
 }
 .teacher-dashboard .teacher-course-card:hover .teacher-course-cta-arrow {
   transform: translateX(3px);
