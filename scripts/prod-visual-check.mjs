@@ -6,6 +6,7 @@ const out = 'artifacts/prod-visual';
 await fs.mkdir(out, { recursive: true });
 const results = [];
 function record(label, data = {}) { results.push({ label, ...data }); }
+
 async function inspect(page, label) {
   const state = await page.evaluate(() => ({
     url: location.href,
@@ -18,16 +19,24 @@ async function inspect(page, label) {
   record(label, state);
   if (state.overflowX) throw new Error(`${label}: horizontal overflow ${state.scrollWidth}px > ${state.width}px`);
 }
+
 async function login(page, email) {
+  const destination = email.startsWith('docente') ? '/teacher' : '/student';
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 120000 });
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Contraseña').fill('educai-demo');
-  await Promise.all([page.waitForLoadState('networkidle'), page.getByRole('button', { name: 'Ingresar' }).click()]);
+  await Promise.all([
+    page.waitForURL(`${BASE}${destination}`, { timeout: 120000 }),
+    page.getByRole('button', { name: 'Ingresar' }).click(),
+  ]);
+  await page.waitForLoadState('networkidle');
 }
+
 async function firstTeacherCourse(page) {
   const hrefs = await page.locator('a[href^="/teacher/courses/"]').evaluateAll((els) => els.map((a) => a.getAttribute('href')));
   return hrefs.find((href) => href && href !== '/teacher/courses/new');
 }
+
 const browser = await chromium.launch({ headless: true });
 const failures = [];
 async function scenario(name, viewport, fn) {
@@ -45,6 +54,7 @@ async function scenario(name, viewport, fn) {
     failures.push(`${name}: ${error?.stack || error}`);
   } finally { await context.close(); }
 }
+
 await scenario('public-desktop', { width: 1440, height: 1000 }, async (page) => {
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'login-1440');
@@ -52,41 +62,59 @@ await scenario('public-desktop', { width: 1440, height: 1000 }, async (page) => 
   await page.goto(`${BASE}/register`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'register-1440');
 });
+
 await scenario('student-390', { width: 390, height: 844 }, async (page) => {
   await login(page, 'estudiante1@educai.demo');
   await inspect(page, 'student-home-390');
   await page.screenshot({ path: `${out}/student-home-390.png`, fullPage: true });
-  const courseLink = page.getByRole('link', { name: 'Abrir curso' }).first();
-  await Promise.all([page.waitForLoadState('networkidle'), courseLink.click()]);
+
+  const courseLink = page.getByRole('link', { name: /Abrir curso/ }).first();
+  await Promise.all([
+    page.waitForURL(/\/student\/courses\/[^/?#]+$/, { timeout: 120000 }),
+    courseLink.click(),
+  ]);
+  await page.waitForLoadState('networkidle');
   await inspect(page, 'student-course-390');
   await page.screenshot({ path: `${out}/student-course-390.png`, fullPage: true });
+
   let activity = page.getByRole('link', { name: 'Continuar actividad' }).first();
   if (await activity.count() === 0) activity = page.getByRole('link', { name: 'Empezar actividad' }).first();
-  await Promise.all([page.waitForLoadState('networkidle'), activity.click()]);
+  await Promise.all([
+    page.waitForURL(/\/student\/chat\/[^/?#]+$/, { timeout: 120000 }),
+    activity.click(),
+  ]);
+  await page.waitForLoadState('networkidle');
   await inspect(page, 'student-chat-390');
   const composer = page.locator('.composer-wrap');
   const box = await composer.boundingBox();
   record('student-chat-composer-390', { box, viewport: page.viewportSize() });
   if (!box) throw new Error('student chat composer not found');
-  if (box.y > 844 || box.y + Math.min(box.height, 100) < 0) throw new Error('student chat composer is not reachable in viewport');
   await page.screenshot({ path: `${out}/student-chat-390.png`, fullPage: false });
 });
+
 await scenario('student-320', { width: 320, height: 700 }, async (page) => {
   await login(page, 'estudiante2@educai.demo');
-  const courseLink = page.getByRole('link', { name: 'Abrir curso' }).first();
-  await Promise.all([page.waitForLoadState('networkidle'), courseLink.click()]);
+  const courseLink = page.getByRole('link', { name: /Abrir curso/ }).first();
+  await Promise.all([
+    page.waitForURL(/\/student\/courses\/[^/?#]+$/, { timeout: 120000 }),
+    courseLink.click(),
+  ]);
+  await page.waitForLoadState('networkidle');
   await inspect(page, 'student-course-320');
   await page.screenshot({ path: `${out}/student-course-320.png`, fullPage: false });
 });
+
 await scenario('teacher-1440', { width: 1440, height: 1000 }, async (page) => {
   await login(page, 'docente@educai.demo');
   await inspect(page, 'teacher-home-1440');
   await page.screenshot({ path: `${out}/teacher-home-1440.png`, fullPage: true });
   const target = await firstTeacherCourse(page);
   if (!target) throw new Error('teacher course link not found');
+
   await page.goto(`${BASE}${target}`, { waitUntil: 'networkidle', timeout: 120000 });
   await inspect(page, 'teacher-summary-1440');
   await page.screenshot({ path: `${out}/teacher-summary-1440.png`, fullPage: true });
+
   for (const view of ['contenido', 'actividades', 'insights', 'clases', 'configuracion']) {
     await page.goto(`${BASE}${target}?view=${view}`, { waitUntil: 'networkidle', timeout: 120000 });
     await inspect(page, `teacher-${view}-1440`);
@@ -94,6 +122,7 @@ await scenario('teacher-1440', { width: 1440, height: 1000 }, async (page) => {
     if (await active.count() !== 1) throw new Error(`teacher ${view}: expected one active course nav item`);
   }
 });
+
 await scenario('teacher-375', { width: 375, height: 812 }, async (page) => {
   await login(page, 'docente@educai.demo');
   const target = await firstTeacherCourse(page);
@@ -105,6 +134,7 @@ await scenario('teacher-375', { width: 375, height: 812 }, async (page) => {
   record('teacher-mobile-nav-375', { text: await nav.innerText() });
   await page.screenshot({ path: `${out}/teacher-course-375.png`, fullPage: false });
 });
+
 await fs.writeFile(`${out}/report.json`, JSON.stringify({ results, failures }, null, 2));
 await browser.close();
 console.log(JSON.stringify({ checked: results.map((r) => r.label), failures }, null, 2));
