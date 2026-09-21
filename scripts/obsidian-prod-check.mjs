@@ -80,6 +80,38 @@ await scenario('public-1440', { width: 1440, height: 1000 }, async (page) => {
   await page.screenshot({ path: `${out}/login-1440.png`, fullPage: true });
 });
 
+await scenario('student-1440', { width: 1440, height: 1000 }, async (page) => {
+  await login(page, 'estudiante1@educai.demo');
+  await inspect(page, 'student-home-1440');
+  const home = page.locator('.student-home');
+  const greeting = page.locator('.student-home-intro h1');
+  const sectionTitle = page.locator('.student-primary-section > h2');
+  const primaryCard = page.locator('.continue-card');
+  const courseCard = page.locator('.student-course-card').first();
+  const joinAction = page.getByText('+ Unirme a un curso', { exact: true });
+  await Promise.all([primaryCard.waitFor({ state: 'visible' }), courseCard.waitFor({ state: 'visible' }), joinAction.waitFor({ state: 'visible' })]);
+  const [homeBox, greetingBox, primaryBox, courseBox, topbarBox] = await Promise.all([
+    home.boundingBox(), greeting.boundingBox(), primaryCard.boundingBox(), courseCard.boundingBox(), page.locator('.topbar-shell').boundingBox()
+  ]);
+  if (!homeBox || !greetingBox || !primaryBox || !courseBox || !topbarBox) throw new Error('student home geometry missing');
+  if (homeBox.width < 1080) throw new Error(`student container remains too narrow: ${homeBox.width}px`);
+  if (Math.abs(primaryBox.width - courseBox.width) > 1.5) throw new Error(`primary/course width mismatch: ${primaryBox.width} vs ${courseBox.width}`);
+  if (Math.abs(primaryBox.x - courseBox.x) > 1.5) throw new Error(`primary/course x mismatch: ${primaryBox.x} vs ${courseBox.x}`);
+  if (Math.abs(greetingBox.x - primaryBox.x) > 1.5) throw new Error(`greeting/card grid mismatch: ${greetingBox.x} vs ${primaryBox.x}`);
+  if (Math.abs(homeBox.x - topbarBox.x) > 1.5 || Math.abs(homeBox.width - topbarBox.width) > 1.5) throw new Error(`navbar/body container mismatch`);
+  const greetingSize = await greeting.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const sectionSize = await sectionTitle.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  if (greetingSize > 33) throw new Error(`greeting still oversized: ${greetingSize}px`);
+  if (sectionSize < 21 || sectionSize > 25) throw new Error(`section title scale unexpected: ${sectionSize}px`);
+  const primaryBg = await primaryCard.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const courseBg = await courseCard.evaluate((el) => getComputedStyle(el).backgroundColor);
+  if (primaryBg === courseBg) throw new Error('priority surface is not differentiated from course surface');
+  const ctaBox = await page.locator('.continue-action').boundingBox();
+  if (!ctaBox || ctaBox.height < 40) throw new Error(`primary CTA lacks sufficient hit area`);
+  record('student-home-1440-geometry', { homeBox, primaryBox, courseBox, topbarBox, greetingSize, sectionSize, primaryBg, courseBg, ctaBox });
+  await page.screenshot({ path: `${out}/student-home-1440.png`, fullPage: true });
+});
+
 await scenario('student-390', { width: 390, height: 844 }, async (page) => {
   await login(page, 'estudiante1@educai.demo');
   await inspect(page, 'student-home-390');
