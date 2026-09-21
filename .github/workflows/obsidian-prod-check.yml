@@ -1,0 +1,33 @@
+name: Obsidian production check
+
+on:
+  push:
+    branches: [qa-obsidian-production]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install project dependencies
+        run: npm install
+      - name: Run domain tests
+        run: npm test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Obsidian production browser checks
+        run: node scripts/obsidian-prod-check.mjs
+      - name: Upload visual report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: educai-obsidian-production-check
+          path: artifacts/obsidian-prod
+          if-no-files-found: warn
