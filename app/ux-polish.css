@@ -1,0 +1,23 @@
+/* Final disclosure polish: use only Educai's own labels/icons, never browser triangles. */
+.user-menu summary::marker,
+.join-course-disclosure > summary::marker,
+.row-menu > summary::marker,
+.privacy-disclosure > summary::marker,
+.objective-summary details > summary::marker {
+  content: "";
+}
+
+.user-menu summary::-webkit-details-marker,
+.join-course-disclosure > summary::-webkit-details-marker,
+.row-menu > summary::-webkit-details-marker,
+.privacy-disclosure > summary::-webkit-details-marker,
+.objective-summary details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.join-course-disclosure > summary::before,
+.row-menu > summary::before,
+.privacy-disclosure > summary::before,
+.objective-summary details > summary::before {
+  content: none !important;
+}
