@@ -34,4 +34,4 @@ jobs:
           path: artifacts/obsidian-prod
           if-no-files-found: warn
 
-# QA rerun: teacher contrast and spacing fixes
+# QA rerun: disclosure marker polish
