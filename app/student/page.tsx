@@ -7,29 +7,30 @@ export default async function StudentHome(){
   const user=await requireStudent();
   const [enrollments,recentConversation,pendingFeedback]=await Promise.all([
     db.enrollment.findMany({where:{studentId:user.student.id},include:{course:{include:{_count:{select:{activities:true}}}}},orderBy:{joinedAt:"desc"}}),
-    db.conversation.findFirst({where:{studentId:user.student.id,status:"ACTIVE",activityId:{not:null}},include:{activity:{include:{course:true}}},orderBy:{updatedAt:"desc"}}),
+    db.conversation.findFirst({where:{studentId:user.student.id,status:"ACTIVE",activityId:{not:null}},include:{activity:{include:{course:true}},_count:{select:{messages:true}}},orderBy:{updatedAt:"desc"}}),
     db.classSession.findMany({where:{status:"CLOSED",course:{enrollments:{some:{studentId:user.student.id}}},classFeedback:{none:{studentId:user.student.id}}},include:{course:true},orderBy:{endedAt:"desc"},take:3})
   ]);
   const recentActivity=recentConversation?.activity;
   const primaryPending=pendingFeedback[0];
 
-  return <div className="shell">
-    <section className="workspace-header compact"><div className="eyebrow">Espacio estudiante</div><h1>Hola, {user.name.split(" ")[0]}</h1><p>Tu próximo paso aparece primero. Después podés explorar el resto de tus cursos o sumarte a uno nuevo.</p></section>
+  return <div className="shell student-home">
+    <section className="student-home-intro"><h1>Hola, {user.name.split(" ")[0]}</h1></section>
 
-    {(recentActivity||primaryPending)&&<section className="priority-area" aria-labelledby="next-step-title">
-      <div className="section-title"><div><div className="label">Ahora</div><h2 id="next-step-title">Tu próximo paso</h2></div></div>
-      <div className={`priority-grid ${recentActivity&&primaryPending?"two":"one"}`}>
-        {recentActivity&&<div className="card featured priority-card"><div><span className="badge ok">Continuar</span><h3>{recentActivity.title}</h3><p className="muted small">{recentActivity.course.name} · retomá la conversación desde tu último mensaje.</p></div><Link className="btn" href={`/student/chat/${recentActivity.id}`}>Continuar conversación</Link></div>}
-        {primaryPending&&<div className="card priority-card"><div><span className="badge warn">Feedback pendiente</span><h3>{primaryPending.title}</h3><p className="muted small">{primaryPending.course.name} · tu respuesta es anónima para el docente y lleva menos de un minuto.</p></div><Link className={recentActivity?"btn secondary":"btn"} href={`/student/feedback/${primaryPending.id}`}>Dar feedback</Link></div>}
-      </div>
-      {pendingFeedback.length>1&&<p className="small muted section-note">Además tenés {pendingFeedback.length-1} feedback{pendingFeedback.length-1===1?"":"s"} pendiente{pendingFeedback.length-1===1?"":"s"} en tus cursos.</p>}
+    {recentActivity&&<section className="student-primary-section" aria-labelledby="continue-title">
+      <h2 id="continue-title">Continuá donde quedaste</h2>
+      <Link className="continue-card" href={`/student/chat/${recentActivity.id}`}>
+        <div className="continue-card-main"><div className="continue-course-line"><span>{recentActivity.course.name}</span><span className="status-text">En progreso</span></div><h3>{recentActivity.title}</h3><p>{recentConversation?._count.messages??0} mensajes · retomá desde tu último intercambio con el tutor.</p></div>
+        <span className="continue-action">Continuar conversación →</span>
+      </Link>
     </section>}
 
-    <div className="grid two home-grid">
-      <section><div className="section-title"><div><div className="label">Tus cursos</div><h2>Continuar aprendiendo</h2><p>Entrá a un curso para ver actividades, feedback e historial.</p></div></div>{enrollments.length?<div className="stack">{enrollments.map(({course})=><Link key={course.id} href={`/student/courses/${course.id}`} className="card interactive course-row"><div><div className="spread"><div><h3>{course.name}</h3><p className="muted small">{course.description}</p></div><span className="badge gray">{course._count.activities} actividad{course._count.activities===1?"":"es"}</span></div></div><span className="link">Abrir curso →</span></Link>)}</div>:<div className="empty"><strong>Todavía no tenés cursos</strong><span>Usá el código de ingreso que te comparta un docente. Cuando te sumes, tus actividades aparecerán acá.</span></div>}</section>
-      <section><div className="section-title"><div><div className="label">Nuevo curso</div><h2>Ingresar con código</h2><p>El código identifica el curso y te inscribe con esta cuenta.</p></div></div><div className="card featured"><JoinCourseForm/></div></section>
-    </div>
+    {primaryPending&&<section className="student-feedback-reminder" aria-label="Feedback pendiente"><div><strong>{primaryPending.title}</strong><span>{primaryPending.course.name} · feedback anónimo</span></div><Link className="text-action" href={`/student/feedback/${primaryPending.id}`}>Dar feedback →</Link></section>}
 
-    <div className="privacy-compact footer-privacy">Tus conversaciones son privadas para el docente. Educai analiza señales agregadas del grupo para apoyar decisiones pedagógicas, no perfiles individuales.</div>
+    <section className="student-courses-section">
+      <div className="simple-section-title"><h2>Tus cursos</h2></div>
+      {enrollments.length?<div className="student-course-grid">{enrollments.map(({course})=><Link key={course.id} href={`/student/courses/${course.id}`} className="student-course-card"><div className="student-course-card-head"><h3>{course.name}</h3><span className="course-count">{course._count.activities} actividad{course._count.activities===1?"":"es"}</span></div><p>{course.description}</p><span className="text-action">Abrir curso →</span></Link>)}</div>:<div className="student-empty-line">Todavía no tenés cursos.</div>}
+
+      <details className="join-course-disclosure" open={!enrollments.length}><summary>+ Unirme a un curso</summary><div className="join-course-panel"><JoinCourseForm/></div></details>
+    </section>
   </div>;
 }
