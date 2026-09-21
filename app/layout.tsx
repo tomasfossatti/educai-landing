@@ -22,7 +22,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <ObsidianExperience role={experienceRole}/>
     <a className="skip-link" href="#main-content">Saltar al contenido</a>
     <header className="topbar"><div className="shell topbar-shell">
-      <Link className="brand" href={home} aria-label="Educai · Mis cursos"><img className="brand-logo" src="/educai-logo-header.png" width="701" height="200" alt="" aria-hidden="true" /></Link>
+      <Link className="brand" href={home} aria-label="Educai · Mis cursos"><span className="brand-wordmark" aria-hidden="true"><span className="brand-wordmark-base">educ</span><span className="brand-wordmark-ai">ai</span></span></Link>
       <nav className="nav" aria-label="Navegación principal">
         {user ? <details className="user-menu"><summary className="user-menu-summary"><span><strong>{user.name}</strong><small>{user.role === "TEACHER" ? "Docente" : "Estudiante"}</small></span><span aria-hidden="true">⌄</span></summary><div className="user-menu-popover"><Link href={home}>Mis cursos</Link><form action={logoutAction}><button type="submit">Cerrar sesión</button></form></div></details> : <><Link className="nav-link" href="/login">Ingresar</Link><Link className="btn secondary compact" href="/register">Crear cuenta</Link></>}
       </nav>
