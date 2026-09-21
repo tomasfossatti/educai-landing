@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { ArrowFillButton } from "./obsidian/arrow-fill-button";
 
 export function PendingSubmitButton({
   children,
@@ -13,6 +14,9 @@ export function PendingSubmitButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  if (className.trim() === "btn") {
+    return <ArrowFillButton type="submit" disabled={pending}>{pending ? pendingLabel : children}</ArrowFillButton>;
+  }
   return <button className={className} type="submit" disabled={pending} aria-disabled={pending}>{pending ? pendingLabel : children}</button>;
 }
 

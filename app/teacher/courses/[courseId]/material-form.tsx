@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createMaterialAction, type FormActionState } from "../../../actions";
+import { ArrowFillButton } from "../../../components/obsidian/arrow-fill-button";
 
 const initialState: FormActionState = { error: null };
 
@@ -20,6 +21,6 @@ export function MaterialForm({ courseId }: { courseId: string }) {
     </div>
     <div className="form-field"><label htmlFor="material-state">Disponibilidad</label><select id="material-state" name="state" defaultValue="ACTIVE"><option value="ACTIVE">Usar ahora en el tutor</option><option value="DRAFT">Guardar como borrador</option></select><span className="field-help">Solo los materiales activos forman parte del conocimiento académico del tutor.</span></div>
     {state.error && <div className="form-error" role="alert">{state.error}</div>}
-    <button className="btn" type="submit" disabled={pending} aria-disabled={pending}>{pending ? "Procesando material…" : "Agregar material"}</button>
+    <ArrowFillButton className="full" type="submit" disabled={pending}>{pending ? "Procesando material…" : "Agregar material"}</ArrowFillButton>
   </form>;
 }

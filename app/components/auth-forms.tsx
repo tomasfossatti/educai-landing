@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { loginAction, registerAction, type FormActionState } from "../actions";
+import { ArrowFillButton } from "./obsidian/arrow-fill-button";
+import { MagnetTabs } from "./obsidian/magnet-tabs";
 
 const initialState: FormActionState = { error: null };
 
@@ -24,24 +26,24 @@ export function LoginForm() {
     <div className="form-field"><label htmlFor="login-email">Email</label><input id="login-email" name="email" type="email" autoComplete="email" inputMode="email" required aria-invalid={Boolean(state.error)}/></div>
     <PasswordField id="login-password" name="password" autoComplete="current-password"/>
     {state.error && <div className="form-error" role="alert">{state.error}</div>}
-    <button className="btn" type="submit" disabled={pending} aria-disabled={pending}>{pending ? "Ingresando…" : "Ingresar"}</button>
+    <ArrowFillButton className="full" type="submit" disabled={pending}>{pending ? "Ingresando…" : "Ingresar"}</ArrowFillButton>
   </form>;
 }
 
 export function RegisterForm() {
   const [state, formAction, pending] = useActionState(registerAction, initialState);
+  const [role, setRole] = useState<"Estudiante" | "Docente">("Estudiante");
   return <form action={formAction} className="form-stack" noValidate={false}>
     <fieldset className="choice-fieldset">
       <legend>¿Cómo vas a usar Educai?</legend>
-      <div className="role-choice-grid">
-        <label className="role-choice"><input type="radio" name="role" value="STUDENT" defaultChecked required/><strong>Soy estudiante</strong><span>Quiero entrar a cursos, trabajar con el tutor y dar feedback.</span></label>
-        <label className="role-choice"><input type="radio" name="role" value="TEACHER" required/><strong>Soy docente</strong><span>Quiero crear cursos, cargar contenido y observar patrones agregados.</span></label>
-      </div>
+      <input type="hidden" name="role" value={role === "Docente" ? "TEACHER" : "STUDENT"}/>
+      <MagnetTabs slug="register-role" options={["Estudiante", "Docente"]} activeTab={role} onSelect={(option) => setRole(option as "Estudiante" | "Docente")} />
+      <div className="role-explainer" aria-live="polite">{role === "Estudiante" ? "Entrá a cursos, trabajá con el tutor y compartí feedback anónimo." : "Creá cursos, cargá fuentes validadas y observá patrones agregados del grupo."}</div>
     </fieldset>
     <div className="form-field"><label htmlFor="register-name">Nombre</label><input id="register-name" name="name" autoComplete="name" required minLength={2}/></div>
     <div className="form-field"><label htmlFor="register-email">Email</label><input id="register-email" name="email" type="email" autoComplete="email" inputMode="email" required/></div>
     <PasswordField id="register-password" name="password" autoComplete="new-password" help="Mínimo 8 caracteres."/>
     {state.error && <div className="form-error" role="alert">{state.error}</div>}
-    <button className="btn" type="submit" disabled={pending} aria-disabled={pending}>{pending ? "Creando cuenta…" : "Crear cuenta"}</button>
+    <ArrowFillButton className="full" type="submit" disabled={pending}>{pending ? "Creando cuenta…" : "Crear cuenta"}</ArrowFillButton>
   </form>;
 }

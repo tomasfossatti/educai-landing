@@ -1,0 +1,19 @@
+.role-explainer {
+  margin-top: .7rem;
+  padding: .75rem .85rem;
+  border: 1px solid rgba(154, 177, 255, .12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.025);
+  color: #9eabc2;
+  font-size: .84rem;
+  line-height: 1.45;
+}
+.ai-state-wrap { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+.obsidian-loading { text-align: center; align-items: center; }
+.obsidian-loading .eyebrow,.obsidian-loading h2,.obsidian-loading p { text-align: center; }
+
+@media (max-width: 620px) {
+  .composer-actions { align-items: stretch !important; }
+  .ai-state-wrap { align-items: center; }
+  .composer-actions .obsidian-arrow-fill-btn { width: 100%; }
+}

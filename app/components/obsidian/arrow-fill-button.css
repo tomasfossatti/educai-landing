@@ -1,0 +1,58 @@
+.obsidian-arrow-fill-btn {
+  --btn-bg: #5b7cfa;
+  --btn-text: #ffffff;
+  --btn-fill-bg: #eef3ff;
+  --btn-fill-text: #15224b;
+  --btn-fill-bg-hover: #ffffff;
+  --btn-fill-text-hover: #111827;
+  --btn-arrow: #15224b;
+  --btn-arrow-hover: #111827;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0 3.5rem 0 1.4rem;
+  position: relative;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  font-size: .9rem;
+  font-weight: 720;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.15);
+  box-shadow: 0 14px 35px rgba(35,64,160,.26), inset 0 1px rgba(255,255,255,.22);
+  isolation: isolate;
+}
+.obsidian-arrow-fill-btn.full { width: 100%; }
+.obsidian-arrow-fill-btn.compact { min-height: 2.5rem; padding-left: 1rem; padding-right: 3rem; }
+.obsidian-arrow-fill-btn__text { position: relative; z-index: 1; }
+.obsidian-arrow-fill-btn__circle {
+  clip-path: inset(.38rem .38rem .38rem calc(100% - 2.45rem) round 2rem);
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  padding: 0 3.5rem 0 1.4rem;
+  z-index: 2;
+  background-color: var(--btn-fill-bg);
+  color: var(--btn-fill-text);
+  transition: clip-path .45s cubic-bezier(.785,.135,.15,.86), background-color .45s cubic-bezier(.785,.135,.15,.86), color .45s cubic-bezier(.785,.135,.15,.86);
+}
+.obsidian-arrow-fill-btn.compact .obsidian-arrow-fill-btn__circle { padding-left: 1rem; padding-right: 3rem; }
+.obsidian-arrow-fill-btn__circle-text { display: flex; align-items: center; width: 100%; white-space: nowrap; }
+.obsidian-arrow-fill-btn__icon { width: .75rem; height: .75rem; position: absolute; right: 1rem; overflow: hidden; color: var(--btn-arrow); }
+.obsidian-arrow-fill-btn__path { transition: transform .45s cubic-bezier(.785,.135,.15,.86); transform-origin: center; fill: currentColor; }
+.obsidian-arrow-fill-btn__path:first-child { transform: translateX(-120%) scale(0); }
+.obsidian-arrow-fill-btn:is(:hover,:focus-visible):not(:disabled) .obsidian-arrow-fill-btn__path:first-child { transform: translateX(0) scale(1); }
+.obsidian-arrow-fill-btn:is(:hover,:focus-visible):not(:disabled) .obsidian-arrow-fill-btn__path:last-child { transform: translateX(120%) scale(0); }
+.obsidian-arrow-fill-btn:is(:hover,:focus-visible):not(:disabled) .obsidian-arrow-fill-btn__circle { clip-path: inset(0 round 2rem); background-color: var(--btn-fill-bg-hover); color: var(--btn-fill-text-hover); }
+.obsidian-arrow-fill-btn:is(:hover,:focus-visible):not(:disabled) .obsidian-arrow-fill-btn__icon { color: var(--btn-arrow-hover); }
+.obsidian-arrow-fill-btn:focus-visible { outline: 2px solid #8fb5ff; outline-offset: 4px; }
+.obsidian-arrow-fill-btn:disabled { cursor: not-allowed; opacity: .56; }
+@media (prefers-reduced-motion: reduce) { .obsidian-arrow-fill-btn__circle,.obsidian-arrow-fill-btn__path { transition: none; } }
