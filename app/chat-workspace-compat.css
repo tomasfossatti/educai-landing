@@ -1,0 +1,20 @@
+/* Neutralize legacy chat-shell/composer rules that conflict with the viewport workspace. */
+.chat-shell.tutor-workspace{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding-bottom:0!important;
+}
+
+@media (max-width:767px){
+  .composer-wrap{
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+}
+
+@media (max-width:620px){
+  .chat-page{
+    height:calc(100dvh - 60px)!important;
+  }
+}
