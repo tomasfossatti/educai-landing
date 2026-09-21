@@ -38,7 +38,7 @@ export function ChatThread({ messages }: { messages: ChatMessage[] }) {
       {messages.length ? messages.map((message, index) => {
         const student = message.role === "STUDENT";
         return <div key={message.id} id={index === messages.length - 1 ? "latest-message" : undefined} className={`message-row ${student ? "student-row" : "assistant-row"}`}>
-          <div className="message-speaker">{student ? "Vos" : "Tutor Educai"}</div>
+          {student ? <div className="message-speaker student-speaker">Vos</div> : <div className="assistant-identity"><span className="tutor-avatar" aria-hidden="true">E</span><span>Tutor Educai</span></div>}
           <div className={`message ${student ? "student" : "assistant"}`}>
             {student ? <p className="student-message-text">{message.content}</p> : <MarkdownMessage content={message.content}/>}          
           </div>
