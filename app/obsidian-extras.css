@@ -58,6 +58,52 @@ body {
   color: #e5ecff !important;
 }
 
+/* Teacher hierarchy: legacy selectors in globals.css had greater specificity than the Obsidian theme. */
+.course-card h3,
+.card h2,
+.card h3,
+.surface-section h2,
+.surface-section h3,
+.section-title h2,
+.section-subhead h3,
+.list-row h3,
+.row-title h3,
+.workspace-section h2,
+.workspace-section h3 {
+  color: var(--obsidian-text) !important;
+}
+
+/* Give text real breathing room inside framed surfaces. */
+.card,
+.surface-section {
+  padding: clamp(22px, 2vw, 28px) !important;
+}
+.course-header {
+  padding: clamp(26px, 3vw, 34px) !important;
+  margin-bottom: 28px !important;
+  border-radius: 24px !important;
+}
+.workspace-section > .section-title:first-child {
+  margin-top: 4px;
+  margin-bottom: 22px;
+}
+
+/* Course status should remain readable instead of collapsing into a narrow pill. */
+.course-card > .spread {
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.course-card > .spread > div:first-child {
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+}
+.course-card .badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  max-width: 100%;
+  padding-inline: 12px !important;
+}
+
 /* Remove the remaining light surfaces from the previous Educai theme. */
 .item-card,
 .decision-sequence > div,
@@ -161,7 +207,18 @@ input[type="file"]::file-selector-button:hover {
 .obsidian-loading { text-align: center; align-items: center; }
 .obsidian-loading .eyebrow,.obsidian-loading h2,.obsidian-loading p { text-align: center; }
 
+@media (max-width: 860px) {
+  .course-header {
+    padding: 24px 20px !important;
+    margin-bottom: 20px !important;
+  }
+}
+
 @media (max-width: 620px) {
+  .card,
+  .surface-section {
+    padding: 20px !important;
+  }
   .composer-actions { align-items: stretch !important; }
   .ai-state-wrap { align-items: center; }
   .composer-actions .obsidian-arrow-fill-btn { width: 100%; }
