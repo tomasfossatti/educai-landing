@@ -33,3 +33,5 @@ jobs:
           name: educai-obsidian-production-check
           path: artifacts/obsidian-prod
           if-no-files-found: warn
+
+# QA rerun: teacher contrast and spacing fixes
