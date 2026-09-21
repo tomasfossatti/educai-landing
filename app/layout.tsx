@@ -2,6 +2,7 @@ import "./globals.css";
 import "./obsidian.css";
 import "./obsidian-extras.css";
 import "./ux-refinement.css";
+import "./ux-polish.css";
 import Link from "next/link";
 import { currentUser } from "@/src/lib/auth";
 import { logoutAction } from "./actions";
