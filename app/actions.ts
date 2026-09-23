@@ -11,6 +11,8 @@ import { tutorReply } from "@/src/lib/tutor";
 import { analyzeConversation, refreshCourseInsights } from "@/src/lib/analysis";
 import { refreshClassFeedbackInsight } from "@/src/lib/feedback";
 import { assertRecommendationTransition } from "@/src/lib/domain.mjs";
+import { PRIVACY_CONTRACT, hasAcceptedPrivacyContract } from "@/src/lib/privacy-contract.mjs";
+import { chatPipelineInput } from "@/src/lib/study-starters.mjs";
 
 export type FormActionState = { error: string | null };
 export type ChatActionState = { error: string | null };
@@ -207,16 +209,18 @@ export async function setMaterialStateAction(fd: FormData) {
 
 export async function sendMessageAction(_previous: ChatActionState, fd: FormData): Promise<ChatActionState> {
   const activityId = value(fd, "activityId");
-  const text = value(fd, "message");
+  const text = chatPipelineInput(fd.get("message"));
   if (!activityId) return { error: "No pudimos identificar la actividad. Volvé al curso e intentá nuevamente." };
   if (text.length < 2) return { error: "Escribí tu pregunta o idea antes de enviar." };
 
   const activity = await db.activity.findUnique({ where: { id: activityId }, include: { course: true } });
   if (!activity) return { error: "Esta actividad ya no está disponible." };
   const { user } = await studentEnrollment(activity.courseId);
+  if (!hasAcceptedPrivacyContract(user.student)) {
+    return { error: "Aceptá el aviso de privacidad vigente antes de iniciar o continuar una conversación." };
+  }
   let conversation = await db.conversation.findFirst({ where: { activityId, studentId: user.student.id, status: "ACTIVE" }, orderBy: { createdAt: "desc" } });
   if (!conversation) {
-    if (value(fd, "consent") !== "yes") return { error: "Confirmá cómo se procesará la conversación para empezar." };
     conversation = await db.conversation.create({ data: { courseId: activity.courseId, activityId, studentId: user.student.id, consentedAt: new Date() } });
   }
 
@@ -251,6 +255,19 @@ export async function sendMessageAction(_previous: ChatActionState, fd: FormData
 
   revalidatePath(`/student/chat/${activityId}`);
   redirect(`/student/chat/${activityId}#latest-message`);
+}
+
+export async function acceptPrivacyContractAction(fd: FormData) {
+  const activityId = required(fd, "activityId");
+  const activity = await db.activity.findUnique({ where: { id: activityId }, select: { courseId: true } });
+  if (!activity) throw new Error("Actividad no encontrada");
+  const { user } = await studentEnrollment(activity.courseId);
+  await db.studentProfile.update({
+    where: { id: user.student.id },
+    data: { privacyNoticeVersion: PRIVACY_CONTRACT.version, privacyNoticeAcceptedAt: new Date() }
+  });
+  revalidatePath(`/student/chat/${activityId}`);
+  redirect(`/student/chat/${activityId}`);
 }
 
 export async function deleteConversationAction(fd: FormData) {

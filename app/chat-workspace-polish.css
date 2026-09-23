@@ -342,6 +342,13 @@
   border-color:rgba(163,184,255,.11)!important;
   background:rgba(255,255,255,.022)!important;
 }
+.privacy-contract{
+  display:flex;gap:16px;max-width:680px;margin:42px auto;padding:24px;
+  border:1px solid rgba(123,159,255,.28);border-radius:18px;background:rgba(16,22,37,.88);
+}
+.privacy-contract>svg{flex:none;color:#8fa7e7}.privacy-contract h2{margin:0 0 10px;font-size:22px}.privacy-contract p{color:#aeb9ce;line-height:1.6}.privacy-contract form{margin-top:18px}
+.study-starters{margin-top:12px}.study-starters h2{margin:0 0 9px;color:#aeb9ce;font-size:13px;font-weight:650}
+.study-starter-grid{display:flex;flex-wrap:wrap;gap:7px}.study-starter{padding:8px 11px;border:1px solid rgba(157,179,244,.2);border-radius:999px;background:rgba(14,19,32,.86);color:#c9d3e5;cursor:pointer;font:inherit;font-size:12px}.study-starter:hover,.study-starter:focus-visible{border-color:rgba(123,159,255,.58);color:#fff}.study-starter:disabled{opacity:.55;cursor:not-allowed}
 
 @media (min-width:1280px){
   .chat-page{width:min(100%,1180px)!important}

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { evidenceState, aggregateConceptSignals, anonymizeSnippet, canTransitionRecommendation, prePostDescriptor, validateFeedbackAssociation } from "../src/lib/domain.mjs";
 import { assertRole, canTeacherAccessCourse, canStudentAccessCourse } from "../src/lib/authorization.mjs";
 import { validateAnalysisPayload } from "../src/lib/analysis-schema.mjs";
+import { PRIVACY_CONTRACT, hasAcceptedPrivacyContract } from "../src/lib/privacy-contract.mjs";
+import { STUDY_STARTERS, chatPipelineInput } from "../src/lib/study-starters.mjs";
 
 test("evidence threshold distinguishes no data, insufficient and sufficient",()=>{
   assert.equal(evidenceState(0,3),"NO_DATA");
@@ -62,4 +64,17 @@ test("feedback association rejects cross-course session or concept",()=>{
   assert.equal(validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-a"}),true);
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-b",conceptCourseId:"course-a"}));
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-b"}));
+});
+
+test("privacy acceptance is nullable and tied to the current contract version",()=>{
+  assert.equal(hasAcceptedPrivacyContract({privacyNoticeVersion:null,privacyNoticeAcceptedAt:null}),false);
+  assert.equal(hasAcceptedPrivacyContract({privacyNoticeVersion:"older",privacyNoticeAcceptedAt:new Date()}),false);
+  assert.equal(hasAcceptedPrivacyContract({privacyNoticeVersion:PRIVACY_CONTRACT.version,privacyNoticeAcceptedAt:new Date()}),true);
+});
+
+test("starters and free-form messages enter the same chat pipeline input",()=>{
+  const starter=STUDY_STARTERS.find(({intent})=>intent==="EXAMPLE");
+  assert.equal(chatPipelineInput(`  ${starter.message}  `),starter.message);
+  assert.equal(chatPipelineInput("  Mi pregunta libre  "),"Mi pregunta libre");
+  assert.deepEqual(STUDY_STARTERS.map(({intent})=>intent),["EXPLAIN","EXAMPLE","COMPARE","PRACTICE","DIAGNOSE"]);
 });
