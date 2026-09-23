@@ -103,6 +103,8 @@ model TeacherProfile {
 model StudentProfile {
   id            String @id @default(cuid())
   userId        String @unique
+  privacyNoticeVersion String?
+  privacyNoticeAcceptedAt DateTime?
   user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   enrollments   Enrollment[]
   conversations Conversation[]
