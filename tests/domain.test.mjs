@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { evidenceState, aggregateConceptSignals, anonymizeSnippet, canTransitionRecommendation, prePostDescriptor, validateFeedbackAssociation } from "../src/lib/domain.mjs";
 import { assertRole, canTeacherAccessCourse, canStudentAccessCourse } from "../src/lib/authorization.mjs";
 import { validateAnalysisPayload } from "../src/lib/analysis-schema.mjs";
+import { classifyTrend, createSnapshotsIdempotently, selectInterventionWindows } from "../src/lib/snapshot-domain.mjs";
 
 test("evidence threshold distinguishes no data, insufficient and sufficient",()=>{
   assert.equal(evidenceState(0,3),"NO_DATA");
@@ -62,4 +63,39 @@ test("feedback association rejects cross-course session or concept",()=>{
   assert.equal(validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-a"}),true);
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-b",conceptCourseId:"course-a"}));
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-b"}));
+});
+
+const trendThresholds={minParticipantsForNew:3,minParticipantChange:2,minRelativeChange:.25};
+
+test("trend classification covers new, rising, stable and falling",()=>{
+  assert.equal(classifyTrend(null,{participantCount:3,evidenceState:"SUFFICIENT"},trendThresholds),"NEW");
+  assert.equal(classifyTrend({participantCount:4,evidenceState:"SUFFICIENT"},{participantCount:7,evidenceState:"SUFFICIENT"},trendThresholds),"RISING");
+  assert.equal(classifyTrend({participantCount:4,evidenceState:"SUFFICIENT"},{participantCount:5,evidenceState:"SUFFICIENT"},trendThresholds),"STABLE");
+  assert.equal(classifyTrend({participantCount:7,evidenceState:"SUFFICIENT"},{participantCount:4,evidenceState:"SUFFICIENT"},trendThresholds),"FALLING");
+});
+
+test("small variations stay stable and NO_DATA is absence, never change",()=>{
+  assert.equal(classifyTrend({participantCount:10,evidenceState:"SUFFICIENT"},{participantCount:12,evidenceState:"SUFFICIENT"},trendThresholds),"STABLE");
+  assert.equal(classifyTrend({participantCount:5,evidenceState:"SUFFICIENT"},{participantCount:0,evidenceState:"NO_DATA"},trendThresholds),null);
+  assert.equal(classifyTrend({participantCount:0,evidenceState:"NO_DATA"},{participantCount:2,evidenceState:"INSUFFICIENT"},trendThresholds),"STABLE");
+});
+
+test("snapshot insertion delegates once with an idempotent conflict contract",async()=>{
+  const stored=new Set();
+  const insert=async rows=>{let count=0;for(const row of rows){const key=`${row.sessionId}:${row.conceptId}`;if(!stored.has(key)){stored.add(key);count++;}}return {count};};
+  const rows=[{sessionId:"s1",conceptId:"c1"}];
+  assert.deepEqual(await createSnapshotsIdempotently(rows,insert),{count:1});
+  assert.deepEqual(await createSnapshotsIdempotently(rows,insert),{count:0});
+});
+
+test("intervention comparison selects its session and nearest safe prior window",()=>{
+  const sessions=[
+    {id:"old",startedAt:new Date("2026-01-01T10:00:00Z"),endedAt:new Date("2026-01-01T11:00:00Z")},
+    {id:"previous",startedAt:new Date("2026-01-08T10:00:00Z"),endedAt:new Date("2026-01-08T11:00:00Z")},
+    {id:"post",startedAt:new Date("2026-01-15T10:00:00Z"),endedAt:new Date("2026-01-15T11:00:00Z")},
+    {id:"open",startedAt:new Date("2026-01-22T10:00:00Z"),endedAt:null}
+  ];
+  const windows=selectInterventionWindows({intervention:{sessionId:"post"},sessions});
+  assert.equal(windows.before.sessionId,"previous");
+  assert.equal(windows.after.sessionId,"post");
 });

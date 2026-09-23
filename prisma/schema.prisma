@@ -124,6 +124,7 @@ model Course {
   conversations   Conversation[]
   concepts        Concept[]
   insights        AggregatedInsight[]
+  conceptSnapshots ConceptSnapshot[]
   recommendations Recommendation[]
   interventions   TeacherIntervention[]
   sessions        ClassSession[]
@@ -237,6 +238,7 @@ model Concept {
   course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   signals   ConceptSignal[]
   insights  AggregatedInsight[]
+  snapshots ConceptSnapshot[]
   @@unique([courseId, slug])
 }
 
@@ -290,6 +292,25 @@ model AggregatedInsight {
   @@index([courseId, evidenceState])
 }
 
+model ConceptSnapshot {
+  id               String        @id @default(cuid())
+  courseId         String
+  conceptId        String
+  sessionId        String
+  participantCount Int
+  signalCount      Int
+  evidenceState    EvidenceState
+  capturedAt       DateTime
+  createdAt        DateTime      @default(now())
+  course           Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  concept          Concept       @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  session          ClassSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, conceptId])
+  @@index([courseId, conceptId, capturedAt])
+  @@index([courseId, capturedAt])
+}
+
 model Recommendation {
   id            String   @id @default(cuid())
   courseId      String
@@ -336,6 +357,7 @@ model ClassSession {
   activity               Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
   interventions          TeacherIntervention[]
   classFeedback          ClassFeedback[]
+  conceptSnapshots       ConceptSnapshot[]
   @@index([courseId, status])
 }
 
