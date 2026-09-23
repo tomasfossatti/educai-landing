@@ -63,3 +63,24 @@ test("feedback association rejects cross-course session or concept",()=>{
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-b",conceptCourseId:"course-a"}));
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-b"}));
 });
+
+import { conceptSimilarity, distinctParticipants, normalizeConceptLabel } from "../src/lib/concept-matching.mjs";
+
+test("concept labels normalize accents, punctuation and whitespace", () => {
+  assert.equal(normalizeConceptLabel("  Correlación  vs. CAUSALIDAD "), "correlacion vs causalidad");
+  assert.equal(normalizeConceptLabel("Sesgo-de selección"), "sesgo de seleccion");
+});
+
+test("concept similarity recognizes normalized variants without a vector database", () => {
+  assert.equal(conceptSimilarity("Correlación", "correlacion"), 1);
+  assert.ok(conceptSimilarity("correlación y causalidad", "correlacion vs causalidad") > 0.7);
+  assert.ok(conceptSimilarity("derivadas", "selección muestral") < 0.4);
+});
+
+test("aliases do not duplicate independent participants", () => {
+  assert.equal(distinctParticipants([
+    { concept: "correlación", participantKey: "p1" },
+    { concept: "correlacion", participantKey: "p1" },
+    { concept: "causalidad y correlación", participantKey: "p2" }
+  ]), 2);
+});
