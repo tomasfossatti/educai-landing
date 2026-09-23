@@ -24,7 +24,8 @@ The application is a monolith by design. There are no microservices, queues or e
 ### Core services
 - `src/lib/auth.ts`: password hashing, sessions, role guards.
 - `src/lib/materials.ts`: file/text ingestion, extraction and chunk persistence.
-- `src/lib/rag.ts`: active-content retrieval.
+- `src/lib/rag.ts`: active-content lexical + pgvector semantic retrieval and rank fusion.
+- `src/lib/embeddings.ts`: optional OpenAI-compatible embedding generation with bounded retries.
 - `src/lib/ai.ts`: `AIProvider`, DeepSeek production provider, explicitly-labeled local dev provider.
 - `src/lib/tutor.ts`: context construction and tutor behavior.
 - `src/lib/analysis-schema.mjs`: structured analysis schema + runtime validator.
@@ -81,13 +82,14 @@ Identified feedback is operationally stored to prevent duplicate submissions. Te
 1. Teacher creates material as text or uploads PDF/TXT/Markdown.
 2. Text is extracted.
 3. Text is chunked into ~1,400-character overlapping fragments.
-4. Chunks persist with normalized search text.
-5. On each student turn, all active-course chunks are scored with a simple lexical overlap function.
-6. Top chunks enter the tutor system context.
-7. Returned assistant message persists the chunk IDs used.
+4. Chunks persist with normalized search text; optional embeddings are added after commit.
+5. On each student turn, active-course chunks produce lexical candidates and, when configured, pgvector cosine candidates.
+6. Reciprocal-rank fusion merges both lists without comparing unlike raw scores.
+7. Top chunks enter the tutor system context.
+8. The assistant message and ranked `MessageSource` provenance persist atomically; legacy chunk IDs remain temporarily.
 
-### Why lexical retrieval in the MVP?
-It validates the pedagogical loop without adding embedding lifecycle, vector infrastructure or provider cost. The retrieval module is isolated so embeddings/vector search can replace the scoring implementation later without changing chat/product flows.
+### Why hybrid retrieval in PostgreSQL?
+Lexical retrieval remains a no-credential, no-backfill fallback. Optional pgvector recall improves semantic matching without a second database, while nullable vectors permit incremental backfill. See `docs/PGVECTOR.md` for rollout constraints.
 
 ## Tutor information flow
 

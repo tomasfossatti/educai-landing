@@ -5,6 +5,7 @@ import { requireStudent } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { ChatComposer } from "./composer";
 import { ChatThread } from "./chat-thread";
+import { readableSource } from "@/src/lib/retrieval-domain.mjs";
 
 function objectiveSummary(description: string) {
   const normalized = description.replace(/\s+/g, " ").trim();
@@ -16,7 +17,7 @@ export default async function ChatPage({params}:{params:Promise<{activityId:stri
   const {activityId}=await params; const user=await requireStudent();
   const activity=await db.activity.findUnique({where:{id:activityId},include:{course:true}}); if(!activity) notFound();
   const enrollment=await db.enrollment.findUnique({where:{courseId_studentId:{courseId:activity.courseId,studentId:user.student.id}}}); if(!enrollment) notFound();
-  const conversation=await db.conversation.findFirst({where:{activityId,studentId:user.student.id,status:"ACTIVE"},include:{messages:{orderBy:{createdAt:"asc"}}},orderBy:{createdAt:"desc"}});
+  const conversation=await db.conversation.findFirst({where:{activityId,studentId:user.student.id,status:"ACTIVE"},include:{messages:{orderBy:{createdAt:"asc"},include:{sources:{orderBy:{rank:"asc"},select:{contentChunk:{select:{position:true,material:{select:{title:true}}}}}}}}},orderBy:{createdAt:"desc"}});
   const messages=conversation?.messages??[];
   const objective=objectiveSummary(activity.description);
   const hasMoreObjective=objective !== activity.description.replace(/\s+/g, " ").trim();
@@ -30,7 +31,7 @@ export default async function ChatPage({params}:{params:Promise<{activityId:stri
       <details className="privacy-disclosure"><summary><LockKeyhole size={15} strokeWidth={1.9} aria-hidden="true"/><span>Conversación privada</span></summary><p><strong>Tu docente no puede leer esta conversación.</strong> Solo recibe patrones agregados de aprendizaje del grupo, sin acceso a este chat ni a un perfil individual.</p></details>
     </header>
 
-    <ChatThread messages={messages.map(message=>({id:message.id,role:message.role,content:message.content}))}/>
+    <ChatThread messages={messages.map(message=>({id:message.id,role:message.role,content:message.content,sources:message.sources.map(source=>readableSource(source.contentChunk.material.title,source.contentChunk.position))}))}/>
 
     <div className="composer-wrap"><div className="composer"><ChatComposer activityId={activityId} needsConsent={!conversation}/></div></div>
   </div></div>;

@@ -7,10 +7,12 @@ import { after } from "next/server";
 import { db, withDbRetry } from "@/src/lib/db";
 import { createSession, destroySession, hashPassword, verifyPassword, requireStudent, requireTeacher } from "@/src/lib/auth";
 import { createMaterial } from "@/src/lib/materials";
+import { embedMaterial } from "@/src/lib/embeddings";
 import { tutorReply } from "@/src/lib/tutor";
 import { analyzeConversation, refreshCourseInsights } from "@/src/lib/analysis";
 import { refreshClassFeedbackInsight } from "@/src/lib/feedback";
 import { assertRecommendationTransition } from "@/src/lib/domain.mjs";
+import { messageSourceRows } from "@/src/lib/retrieval-domain.mjs";
 
 export type FormActionState = { error: string | null };
 export type ChatActionState = { error: string | null };
@@ -200,6 +202,7 @@ export async function setMaterialStateAction(fd: FormData) {
   const allowed = material.state === "DRAFT" ? ["DRAFT", "ACTIVE", "RETIRED"] : material.state === "ACTIVE" ? ["ACTIVE", "RETIRED"] : ["RETIRED", "ACTIVE"];
   if (!allowed.includes(state)) throw new Error(`Transición de material inválida: ${material.state} → ${state}`);
   await withDbRetry(() => db.learningMaterial.update({ where: { id: materialId }, data: { state: state as any } }));
+  if (state === "ACTIVE") await embedMaterial(materialId);
   revalidatePath(`/teacher/courses/${courseId}`);
   const notice = state === "ACTIVE" ? "material-restored" : "material-retired";
   redirect(`/teacher/courses/${courseId}?view=content&notice=${notice}`);
@@ -231,10 +234,13 @@ export async function sendMessageAction(_previous: ChatActionState, fd: FormData
   }
 
   try {
-    await db.$transaction([
-      db.message.create({ data: { conversationId: conversation.id, role: "STUDENT", content: text } }),
-      db.message.create({ data: { conversationId: conversation.id, role: "ASSISTANT", content: reply.content, sourceChunkIds: reply.sourceChunkIds } })
-    ]);
+    await db.$transaction(async (tx) => {
+      await tx.message.create({ data: { conversationId: conversation.id, role: "STUDENT", content: text } });
+      const assistant = await tx.message.create({ data: { conversationId: conversation.id, role: "ASSISTANT", content: reply.content, sourceChunkIds: reply.sourceChunkIds } });
+      if (reply.sources.length) {
+        await tx.messageSource.createMany({ data: messageSourceRows(assistant.id, reply.sources) });
+      }
+    });
   } catch (error) {
     console.error("No se pudo guardar la respuesta del tutor.", error);
     return { error: "Obtuvimos una respuesta, pero no pudimos guardarla de forma segura. Intentá enviar tu mensaje nuevamente." };
