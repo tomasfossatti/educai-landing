@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MarkdownMessage } from "../../../components/markdown-message";
 
-type ChatMessage = { id: string; role: string; content: string };
+type ChatMessage = { id: string; role: string; content: string; sources: string[] };
 
 export function ChatThread({ messages }: { messages: ChatMessage[] }) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -40,7 +40,7 @@ export function ChatThread({ messages }: { messages: ChatMessage[] }) {
         return <div key={message.id} id={index === messages.length - 1 ? "latest-message" : undefined} className={`message-row ${student ? "student-row" : "assistant-row"}`}>
           {student ? <div className="message-speaker student-speaker">Vos</div> : <div className="assistant-identity"><span className="tutor-avatar" aria-hidden="true">E</span><span>Tutor Educai</span></div>}
           <div className={`message ${student ? "student" : "assistant"}`}>
-            {student ? <p className="student-message-text">{message.content}</p> : <MarkdownMessage content={message.content}/>}          
+            {student ? <p className="student-message-text">{message.content}</p> : <><MarkdownMessage content={message.content}/>{message.sources.length > 0 && <div className="message-sources"><strong>Fuentes</strong><ul>{message.sources.map((source) => <li key={source}>{source}</li>)}</ul></div>}</>}
           </div>
         </div>;
       }) : <div className="chat-empty"><strong>Empezá por lo que te genera duda</strong><p>Podés explicar qué entendés hasta ahora, plantear un ejemplo o pedir una pista. El tutor trabaja únicamente con el contenido validado del curso.</p></div>}

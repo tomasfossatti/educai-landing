@@ -31,6 +31,11 @@ enum MessageRole {
   ASSISTANT
   SYSTEM
 }
+enum RetrievalMethod {
+  LEXICAL
+  SEMANTIC
+  HYBRID
+}
 enum EvidenceState {
   NO_DATA
   INSUFFICIENT
@@ -191,9 +196,13 @@ model ContentChunk {
   position   Int
   text       String @db.Text
   searchText String @db.Text
+  embedding      Unsupported("vector(1536)")?
+  embeddingModel String?
+  embeddedAt     DateTime?
   material   LearningMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
   version    LearningMaterialVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
   course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  messageSources MessageSource[]
   @@unique([versionId, position])
   @@index([courseId])
   @@index([materialId])
@@ -225,7 +234,23 @@ model Message {
   sourceChunkIds Json?
   createdAt      DateTime @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sources        MessageSource[]
   @@index([conversationId, createdAt])
+}
+
+model MessageSource {
+  id              String          @id @default(cuid())
+  messageId       String
+  contentChunkId  String
+  retrievalMethod RetrievalMethod
+  retrievalScore  Float
+  rank            Int
+  createdAt       DateTime        @default(now())
+  message          Message         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  contentChunk     ContentChunk    @relation(fields: [contentChunkId], references: [id], onDelete: Cascade)
+  @@unique([messageId, contentChunkId])
+  @@unique([messageId, rank])
+  @@index([contentChunkId])
 }
 
 model Concept {

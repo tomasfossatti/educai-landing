@@ -8,7 +8,7 @@ Educai turns student–AI learning conversations into aggregated pedagogical evi
 - Courses + join codes.
 - Validated text/PDF/Markdown content with versions and chunks.
 - Native multi-turn course tutor.
-- Active-content RAG and source-chunk traceability.
+- Hybrid lexical/pgvector RAG and student-readable source provenance.
 - Provider abstraction with DeepSeek Responses API support.
 - Schema-validated conversation analysis.
 - Pseudonymous aggregation by independent participant.
@@ -26,7 +26,7 @@ Read `docs/MVP_SPEC.md`, `docs/ARCHITECTURE.md`, `docs/AI_BEHAVIOR.md` and `docs
 
 - Node.js 20.18+
 - npm
-- PostgreSQL 16+ (or Docker)
+- PostgreSQL 16+ with pgvector (or Docker)
 - DeepSeek API key for real AI chat/analysis
 
 ## 1. Install
@@ -72,9 +72,14 @@ Production/pilot path:
 AI_PROVIDER="deepseek"
 DEEPSEEK_API_KEY="your-deepseek-api-key"
 DEEPSEEK_MODEL="deepseek-flash"
+EMBEDDING_API_KEY="optional-embedding-provider-key"
+EMBEDDING_API_URL="https://api.openai.com/v1/embeddings"
+EMBEDDING_MODEL="text-embedding-3-small"
 ```
 
 `DEEPSEEK_MODEL` is configurable. The production provider uses DeepSeek's Responses API and structured `json_schema` output for conversation analysis. Educai validates that structured payload again before persistence.
+
+Embedding configuration is optional. Without it, retrieval remains lexical. With an OpenAI-compatible 1,536-dimensional embedding endpoint, Educai adds semantic candidates through pgvector. See [`docs/PGVECTOR.md`](docs/PGVECTOR.md) for deployment and backfill guidance.
 
 Development-only path without external credentials:
 
@@ -131,6 +136,9 @@ ANALYTICS_PEPPER=
 AI_PROVIDER=deepseek
 DEEPSEEK_API_KEY=
 DEEPSEEK_MODEL=deepseek-flash
+EMBEDDING_API_KEY=
+EMBEDDING_API_URL=https://api.openai.com/v1/embeddings
+EMBEDDING_MODEL=text-embedding-3-small
 INSIGHT_MIN_PARTICIPANTS=3
 ```
 
@@ -138,7 +146,7 @@ Then run `prisma migrate deploy` as the database release step and `next build` f
 
 ### Pilot limitations to understand
 
-- Lexical retrieval is intentionally simpler than embedding/vector retrieval.
+- Embeddings require an optional compatible provider; lexical retrieval remains the fallback during backfill or provider failure.
 - Small uploaded file bytes are stored in Postgres for the MVP.
 - Conversation analysis is synchronous after each tutor turn.
 - Basic snippet redaction does not replace enterprise DLP/PII tooling.

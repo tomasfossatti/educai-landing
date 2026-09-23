@@ -26,7 +26,7 @@ Only recent conversation history is included to keep the prompt bounded.
 
 ## Grounding and traceability
 
-The RAG service retrieves active content chunks. Their IDs are persisted on the assistant `Message.sourceChunkIds`. The MVP does not show academic-style citations to the student, but the backend retains traceability for later audit/UI work.
+The RAG service retrieves only active content through lexical and optional semantic candidates, then fuses their ranks. Each assistant message atomically persists ranked `MessageSource` provenance while retaining `sourceChunkIds` for migration compatibility. Students see material title and available chunk location, never internal IDs or retrieval scores.
 
 ## Conversation analysis
 

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { evidenceState, aggregateConceptSignals, anonymizeSnippet, canTransitionRecommendation, prePostDescriptor, validateFeedbackAssociation } from "../src/lib/domain.mjs";
 import { assertRole, canTeacherAccessCourse, canStudentAccessCourse } from "../src/lib/authorization.mjs";
 import { validateAnalysisPayload } from "../src/lib/analysis-schema.mjs";
+import { isRetrievableMaterialState, messageSourceRows, rankHybridCandidates, readableSource } from "../src/lib/retrieval-domain.mjs";
 
 test("evidence threshold distinguishes no data, insufficient and sufficient",()=>{
   assert.equal(evidenceState(0,3),"NO_DATA");
@@ -62,4 +63,34 @@ test("feedback association rejects cross-course session or concept",()=>{
   assert.equal(validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-a"}),true);
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-b",conceptCourseId:"course-a"}));
   assert.throws(()=>validateFeedbackAssociation({feedbackCourseId:"course-a",sessionCourseId:"course-a",conceptCourseId:"course-b"}));
+});
+
+test("retrieval includes exclusively ACTIVE material states",()=>{
+  assert.equal(isRetrievableMaterialState("ACTIVE"),true);
+  assert.equal(isRetrievableMaterialState("DRAFT"),false);
+  assert.equal(isRetrievableMaterialState("RETIRED"),false);
+});
+
+test("hybrid ranking merges channels and keeps lexical fallback",()=>{
+  const material={title:"Unidad 3"};
+  const lexical=[{id:"shared",text:"a",position:0,material},{id:"lexical",text:"b",position:1,material}];
+  const semantic=[{id:"semantic",text:"c",position:2,material},{id:"shared",text:"a",position:0,material}];
+  const hybrid=rankHybridCandidates(lexical,semantic,3);
+  assert.equal(hybrid[0].id,"shared");
+  assert.equal(hybrid[0].retrievalMethod,"HYBRID");
+  assert.deepEqual(hybrid.map(item=>item.rank),[1,2,3]);
+  const fallback=rankHybridCandidates(lexical,[],2);
+  assert.deepEqual(fallback.map(item=>item.id),["shared","lexical"]);
+  assert.ok(fallback.every(item=>item.retrievalMethod==="LEXICAL"));
+});
+
+test("provenance belongs to the created assistant message",()=>{
+  const rows=messageSourceRows("assistant-42",[{id:"chunk-1",score:.02,rank:1,retrievalMethod:"HYBRID"}]);
+  assert.deepEqual(rows,[{messageId:"assistant-42",contentChunkId:"chunk-1",retrievalMethod:"HYBRID",retrievalScore:.02,rank:1}]);
+});
+
+test("student source labels contain readable location without technical data",()=>{
+  const label=readableSource("Introducción a causalidad",2);
+  assert.equal(label,"Introducción a causalidad · Fragmento 3");
+  assert.doesNotMatch(label,/chunk-|retrievalScore|0\.\d/i);
 });

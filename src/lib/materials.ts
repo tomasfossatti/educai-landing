@@ -2,6 +2,7 @@ import "server-only";
 import pdf from "pdf-parse/lib/pdf-parse.js";
 import { db } from "./db";
 import { chunkText, normalizeText } from "./text";
+import { embedMaterialVersion } from "./embeddings";
 
 export async function extractMaterialText(args: { text?: string; file?: File | null }) {
   if (args.file && args.file.size > 0) {
@@ -25,12 +26,15 @@ export async function createMaterial(args: { courseId: string; title: string; st
   const extracted = await extractMaterialText({ text: args.text, file: args.file });
   if (extracted.text.trim().length < 20) throw new Error("El contenido extraído es demasiado corto.");
   const chunks = chunkText(extracted.text);
-  return db.$transaction(async (tx) => {
+  const created = await db.$transaction(async (tx) => {
     const material = await tx.learningMaterial.create({ data: { courseId: args.courseId, title: args.title, type: extracted.type, state: args.state } });
     const version = await tx.learningMaterialVersion.create({ data: { materialId: material.id, version: 1, rawText: extracted.text, fileName: extracted.fileName, fileMime: extracted.fileMime, fileData: extracted.fileData } });
     if (chunks.length) {
       await tx.contentChunk.createMany({ data: chunks.map((text, position) => ({ courseId: args.courseId, materialId: material.id, versionId: version.id, position, text, searchText: normalizeText(text) })) });
     }
-    return material;
+    return { material, versionId: version.id };
   });
+  // Embeddings are an optional enrichment: a provider outage must not roll back usable lexical chunks.
+  await embedMaterialVersion(created.versionId);
+  return created.material;
 }
