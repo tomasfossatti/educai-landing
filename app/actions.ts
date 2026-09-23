@@ -10,6 +10,7 @@ import { createMaterial } from "@/src/lib/materials";
 import { tutorReply } from "@/src/lib/tutor";
 import { analyzeConversation, refreshCourseInsights } from "@/src/lib/analysis";
 import { refreshClassFeedbackInsight } from "@/src/lib/feedback";
+import { createSessionSnapshots } from "@/src/lib/snapshots";
 import { assertRecommendationTransition } from "@/src/lib/domain.mjs";
 
 export type FormActionState = { error: string | null };
@@ -283,7 +284,14 @@ export async function closeSessionAction(fd: FormData) {
   const sessionId = required(fd, "sessionId");
   const session = await db.classSession.findFirst({ where: { id: sessionId, courseId } });
   if (!session) throw new Error("Sesión no encontrada");
-  await db.classSession.update({ where: { id: sessionId }, data: { status: "CLOSED", endedAt: new Date() } });
+  const closed = session.status === "CLOSED" && session.endedAt
+    ? session
+    : await db.classSession.update({ where: { id: sessionId }, data: { status: "CLOSED", endedAt: new Date() } });
+  try {
+    await createSessionSnapshots(closed.id);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "concept_snapshot_creation_failed", courseId, sessionId, error: error instanceof Error ? error.message : String(error) }));
+  }
   revalidatePath(`/teacher/courses/${courseId}`);
   redirect(`/teacher/courses/${courseId}?view=classes&notice=session-closed`);
 }
