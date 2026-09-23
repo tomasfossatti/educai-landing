@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evidenceState, aggregateConceptSignals, anonymizeSnippet, canTransitionRecommendation, prePostDescriptor, validateFeedbackAssociation } from "../src/lib/domain.mjs";
+import { evidenceState, aggregateConceptSignals, anonymizeSnippet, canTransitionRecommendation, canTransitionTeacherInsight, canTransitionIntervention, insightTrend, prePostDescriptor, validateFeedbackAssociation, validateInterventionWorkflow } from "../src/lib/domain.mjs";
 import { assertRole, canTeacherAccessCourse, canStudentAccessCourse } from "../src/lib/authorization.mjs";
 import { validateAnalysisPayload } from "../src/lib/analysis-schema.mjs";
 
@@ -23,6 +23,19 @@ test("aggregation deduplicates a very active participant",()=>{
   assert.equal(result.proportion,.6);
 });
 
+test("aggregation records signal, reformulation, detection and study-session metadata",()=>{
+  const signals=[
+    {conceptId:"c1",participantKey:"p1",conversationId:"chat-1",type:"QUESTION",createdAt:"2026-09-20T10:00:00Z"},
+    {conceptId:"c1",participantKey:"p1",conversationId:"chat-1",type:"REFORMULATION",createdAt:"2026-09-20T10:05:00Z"},
+    {conceptId:"c1",participantKey:"p2",conversationId:"chat-2",type:"CONFUSION",createdAt:"2026-09-22T10:00:00Z"}
+  ];
+  const [result]=aggregateConceptSignals(signals,2,2);
+  assert.equal(result.affectedParticipants,2); assert.equal(result.signalCount,3);
+  assert.equal(result.reformulationCount,1); assert.equal(result.sessionCount,2);
+  assert.equal(result.firstDetectedAt.toISOString(),"2026-09-20T10:00:00.000Z");
+  assert.equal(result.lastDetectedAt.toISOString(),"2026-09-22T10:00:00.000Z");
+});
+
 test("anonymization removes obvious email, phone and identifiers",()=>{
   const out=anonymizeSnippet("Escribime a ana@uni.edu, +54 351 555 7788. Legajo: ABCD-1234");
   assert.match(out,/\[email\]/); assert.match(out,/\[teléfono\]/); assert.match(out,/\[identificador\]/);
@@ -34,6 +47,28 @@ test("recommendation state machine blocks reopening terminal states",()=>{
   assert.equal(canTransitionRecommendation("VIEWED","APPLIED"),true);
   assert.equal(canTransitionRecommendation("APPLIED","VIEWED"),false);
   assert.equal(canTransitionRecommendation("DISCARDED","APPLIED"),false);
+});
+
+test("teacher insight states support decisions and controlled reopening",()=>{
+  assert.equal(canTransitionTeacherInsight("OPEN","ACKNOWLEDGED"),true);
+  assert.equal(canTransitionTeacherInsight("ACKNOWLEDGED","ACTION_PLANNED"),true);
+  assert.equal(canTransitionTeacherInsight("ACTION_PLANNED","MONITORING"),true);
+  assert.equal(canTransitionTeacherInsight("MONITORING","RESOLVED"),true);
+  assert.equal(canTransitionTeacherInsight("RESOLVED","OPEN"),false);
+  assert.equal(canTransitionTeacherInsight("DISMISSED","ACKNOWLEDGED"),true);
+  assert.equal(insightTrend(0,3),"NEW"); assert.equal(insightTrend(3,5),"RISING");
+  assert.equal(insightTrend(5,2),"FALLING"); assert.equal(insightTrend(2,2),"STABLE");
+});
+
+test("recommendation becomes a planned intervention and resolves against a session",()=>{
+  const planned={recommendationId:"recommendation-1",conceptId:"concept-1",status:"PLANNED",sessionId:null};
+  assert.equal(validateInterventionWorkflow(planned),true);
+  for (const status of ["APPLIED","SKIPPED"]) {
+    assert.equal(canTransitionIntervention(planned.status,status),true);
+    assert.equal(validateInterventionWorkflow({...planned,status,sessionId:"session-1"}),true);
+  }
+  assert.equal(canTransitionIntervention("APPLIED","SKIPPED"),false);
+  assert.throws(()=>validateInterventionWorkflow({...planned,status:"APPLIED"}));
 });
 
 test("role and course-scope helpers isolate teacher and student access",()=>{

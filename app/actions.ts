@@ -10,7 +10,8 @@ import { createMaterial } from "@/src/lib/materials";
 import { tutorReply } from "@/src/lib/tutor";
 import { analyzeConversation, refreshCourseInsights } from "@/src/lib/analysis";
 import { refreshClassFeedbackInsight } from "@/src/lib/feedback";
-import { assertRecommendationTransition } from "@/src/lib/domain.mjs";
+import { assertRecommendationTransition, assertTeacherInsightTransition, canTransitionIntervention } from "@/src/lib/domain.mjs";
+import { slugify } from "@/src/lib/text";
 
 export type FormActionState = { error: string | null };
 export type ChatActionState = { error: string | null };
@@ -312,10 +313,74 @@ export async function registerInterventionAction(fd: FormData) {
   if (!rec || !session) throw new Error("Recomendación o sesión inválida");
   await db.$transaction([
     db.recommendation.update({ where: { id: rec.id }, data: { status: "APPLIED" } }),
-    db.teacherIntervention.create({ data: { courseId, insightId: rec.insightId, recommendationId: rec.id, sessionId, actualAction: value(fd, "actualAction") || rec.actionText } })
+    db.teacherIntervention.create({ data: { courseId, insightId: rec.insightId, recommendationId: rec.id, conceptId: rec.insight.conceptId, sessionId, actualAction: value(fd, "actualAction") || rec.actionText, status: "APPLIED", plannedAt: new Date(), appliedAt: new Date() } })
   ]);
   revalidatePath(`/teacher/courses/${courseId}`);
   redirect(`/teacher/courses/${courseId}?view=insights&notice=intervention-registered`);
+}
+
+export async function updateInsightStatusAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  await teacherCourse(courseId);
+  const insightId = required(fd, "insightId");
+  const status = required(fd, "status");
+  if (!["ACKNOWLEDGED", "ACTION_PLANNED", "DISMISSED", "RESOLVED", "MONITORING"].includes(status)) throw new Error("Estado docente inválido");
+  const insight = await db.aggregatedInsight.findFirst({ where: { id: insightId, courseId } });
+  if (!insight) throw new Error("Insight no encontrado");
+  assertTeacherInsightTransition(insight.teacherStatus, status);
+  await db.aggregatedInsight.update({ where: { id: insight.id }, data: { teacherStatus: status as any } });
+  revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}/insights/${insightId}`);
+}
+
+export async function renameInsightConceptAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  await teacherCourse(courseId);
+  const insightId = required(fd, "insightId");
+  const conceptName = required(fd, "conceptName", 2);
+  const insight = await db.aggregatedInsight.findFirst({ where: { id: insightId, courseId }, include: { concept: true } });
+  if (!insight) throw new Error("Insight no encontrado");
+  const slug = slugify(conceptName);
+  const collision = await db.concept.findFirst({ where: { courseId, slug, id: { not: insight.conceptId } } });
+  if (collision) throw new Error("Ya existe otro concepto con ese nombre");
+  await db.concept.update({ where: { id: insight.conceptId }, data: { name: conceptName, slug } });
+  revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}/insights/${insightId}`);
+}
+
+export async function planInterventionAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  await teacherCourse(courseId);
+  const recommendationId = required(fd, "recommendationId");
+  const recommendation = await db.recommendation.findFirst({ where: { id: recommendationId, courseId }, include: { insight: true } });
+  if (!recommendation) throw new Error("Recomendación no encontrada");
+  const action = value(fd, "actualAction") || recommendation.actionText;
+  await db.$transaction([
+    db.teacherIntervention.create({ data: { courseId, insightId: recommendation.insightId, recommendationId, conceptId: recommendation.insight.conceptId, actualAction: action, status: "PLANNED", plannedAt: new Date() } }),
+    db.aggregatedInsight.update({ where: { id: recommendation.insightId }, data: { teacherStatus: "ACTION_PLANNED" } }),
+    db.recommendation.update({ where: { id: recommendationId }, data: { status: recommendation.status === "GENERATED" ? "VIEWED" : recommendation.status } })
+  ]);
+  revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}?view=classes&notice=intervention-planned`);
+}
+
+export async function updateInterventionAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  await teacherCourse(courseId);
+  const interventionId = required(fd, "interventionId");
+  const status = required(fd, "status");
+  if (!["APPLIED", "SKIPPED"].includes(status)) throw new Error("Estado de intervención inválido");
+  const intervention = await db.teacherIntervention.findFirst({ where: { id: interventionId, courseId } });
+  if (!intervention || !canTransitionIntervention(intervention.status, status)) throw new Error("Transición de intervención inválida");
+  const sessionId = required(fd, "sessionId");
+  const session = await db.classSession.findFirst({ where: { id: sessionId, courseId } });
+  if (!session) throw new Error("Clase no encontrada");
+  await db.$transaction([
+    db.teacherIntervention.update({ where: { id: intervention.id }, data: { sessionId, status: status as any, appliedAt: status === "APPLIED" ? new Date() : null } }),
+    ...(intervention.recommendationId && status === "APPLIED" ? [db.recommendation.update({ where: { id: intervention.recommendationId }, data: { status: "APPLIED" } })] : [])
+  ]);
+  revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}?view=classes&notice=intervention-updated`);
 }
 
 export async function submitFeedbackAction(fd: FormData) {
