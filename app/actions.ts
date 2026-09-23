@@ -11,6 +11,7 @@ import { tutorReply } from "@/src/lib/tutor";
 import { analyzeConversation, refreshCourseInsights } from "@/src/lib/analysis";
 import { refreshClassFeedbackInsight } from "@/src/lib/feedback";
 import { assertRecommendationTransition } from "@/src/lib/domain.mjs";
+import { deleteConversationAndRefresh } from "@/src/lib/conversation-deletion.mjs";
 
 export type FormActionState = { error: string | null };
 export type ChatActionState = { error: string | null };
@@ -256,12 +257,9 @@ export async function sendMessageAction(_previous: ChatActionState, fd: FormData
 export async function deleteConversationAction(fd: FormData) {
   const conversationId = required(fd, "conversationId");
   const user = await requireStudent();
-  const conversation = await db.conversation.findFirst({ where: { id: conversationId, studentId: user.student.id } });
-  if (!conversation) throw new Error("Conversación no encontrada");
-  await db.conversation.delete({ where: { id: conversationId } });
-  await refreshCourseInsights(conversation.courseId);
-  revalidatePath(`/student/courses/${conversation.courseId}`);
-  redirect(`/student/courses/${conversation.courseId}?notice=conversation-deleted`);
+  const { courseId } = await deleteConversationAndRefresh({ db, conversationId, studentId: user.student.id, refreshCourseInsights });
+  revalidatePath(`/student/courses/${courseId}`);
+  redirect(`/student/courses/${courseId}?notice=conversation-deleted`);
 }
 
 export async function createSessionAction(fd: FormData) {

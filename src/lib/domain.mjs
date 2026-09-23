@@ -64,8 +64,17 @@ export function assertRecommendationTransition(from, to) {
 }
 
 export function validateFeedbackAssociation({ feedbackCourseId, sessionCourseId, conceptCourseId }) {
-  if (!feedbackCourseId || feedbackCourseId !== sessionCourseId || feedbackCourseId !== conceptCourseId) {
-    throw new Error("Feedback must reference a session and concept from the same course");
+  if (!feedbackCourseId || feedbackCourseId !== sessionCourseId) {
+    throw new Error("Feedback must reference a session from the same course");
+  }
+  return true;
+}
+
+/** ClassFeedback is session-scoped in the current model (it has no conceptId). */
+export function validateClassFeedbackAssociation({ feedbackCourseId, sessionCourseId, feedbackStudentId, enrolledStudentIds = [] }) {
+  validateFeedbackAssociation({ feedbackCourseId, sessionCourseId });
+  if (!feedbackStudentId || !new Set(enrolledStudentIds).has(feedbackStudentId)) {
+    throw new Error("Feedback student must be enrolled in the session course");
   }
   return true;
 }
@@ -79,4 +88,49 @@ export function prePostDescriptor({ beforeAffected, beforeTotal, afterDoubt, aft
     comparableAsCausalEffect: false,
     limitation: "Las métricas provienen de fuentes y muestras diferentes; el cambio observado no demuestra causalidad."
   };
+}
+
+export function conceptTrend(previousParticipants, currentParticipants, threshold = DEFAULT_MIN_PARTICIPANTS, relevantDelta = 2) {
+  if (currentParticipants <= 0) return "NO_DATA";
+  if (previousParticipants < threshold && currentParticipants >= threshold) return "NEW";
+  const delta = currentParticipants - previousParticipants;
+  if (delta >= relevantDelta) return "RISING";
+  if (delta <= -relevantDelta) return "FALLING";
+  return "STABLE";
+}
+
+export function comparisonWindows(events, appliedAt) {
+  const boundary = new Date(appliedAt).getTime();
+  return {
+    before: events.filter((event) => new Date(event.at).getTime() < boundary),
+    after: events.filter((event) => new Date(event.at).getTime() >= boundary)
+  };
+}
+
+const interventionTransitions = {
+  PLANNED: new Set(["APPLIED", "SKIPPED"]),
+  APPLIED: new Set(),
+  SKIPPED: new Set()
+};
+
+export function canTransitionIntervention(from, to) {
+  if (from === to) return true;
+  return interventionTransitions[from]?.has(to) ?? false;
+}
+
+/** Resolve aliases before aggregation so one participant is never counted twice. */
+export function resolveConceptAliases(signals, aliases = {}) {
+  return signals.map((signal) => ({ ...signal, conceptId: aliases[signal.conceptId] ?? signal.conceptId }));
+}
+
+export function mergeConceptSignals(signals, sourceConceptIds, targetConceptId) {
+  const sources = new Set(sourceConceptIds);
+  return signals.map((signal) => sources.has(signal.conceptId) ? { ...signal, conceptId: targetConceptId } : signal);
+}
+
+export function splitConceptSignals(signals, sourceConceptId, targetConceptId, signalIds) {
+  const selected = new Set(signalIds);
+  return signals.map((signal) => signal.conceptId === sourceConceptId && selected.has(signal.id)
+    ? { ...signal, conceptId: targetConceptId }
+    : signal);
 }
