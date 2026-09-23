@@ -1,9 +1,10 @@
 import "server-only";
+import type { InsightTrend } from "@prisma/client";
 import { db } from "./db";
 import { getAIProvider } from "./ai";
 import { participantKey as makeParticipantKey } from "./privacy";
 import { slugify, normalizeText } from "./text";
-import { aggregateConceptSignals, anonymizeSnippet } from "./domain.mjs";
+import { aggregateConceptSignals, anonymizeSnippet, insightTrend } from "./domain.mjs";
 import { ANALYSIS_SCHEMA, validateAnalysisPayload } from "./analysis-schema.mjs";
 
 type AnalysisOutput = { concepts: Array<{ concept: string; signals: Array<{ type: "QUESTION" | "CONFUSION" | "REFORMULATION"; evidence_message_id: string; evidence_snippet: string }>; explanation_patterns: Array<{ type: "CONCRETE_EXAMPLE" | "ANALOGY" | "STEP_BY_STEP" | "DEFINITION" | "COMPARISON" | "APPLIED_CASE" | "OTHER"; observed_signal: "EXPLICIT_CONFIRMATION" | "ADVANCED_WITHOUT_REPETITION" | "REDUCED_CONFUSION" | "NONE"; evidence_message_id: string }> }> };
@@ -92,16 +93,18 @@ export async function refreshCourseInsights(courseId: string) {
   const threshold = Math.max(2, Number(process.env.INSIGHT_MIN_PARTICIPANTS || 3));
   const [participantRows, signals, concepts] = await Promise.all([
     db.conversationAnalysis.findMany({ where: { conversation: { courseId } }, distinct: ["participantKey"], select: { participantKey: true } }),
-    db.conceptSignal.findMany({ where: { concept: { courseId } }, select: { conceptId: true, participantKey: true, evidenceSnippet: true, explanationType: true, understandingSignal: true } }),
+    db.conceptSignal.findMany({ where: { concept: { courseId } }, select: { conceptId: true, participantKey: true, type: true, evidenceSnippet: true, explanationType: true, understandingSignal: true, createdAt: true, analysis: { select: { conversationId: true } } } }),
     db.concept.findMany({ where: { courseId } })
   ]);
   const totalParticipants = participantRows.length;
-  const aggregates = aggregateConceptSignals(signals, totalParticipants, threshold);
+  const aggregates = aggregateConceptSignals(signals.map((signal) => ({ ...signal, conversationId: signal.analysis.conversationId })), totalParticipants, threshold);
   const conceptById = new Map(concepts.map((c) => [c.id, c]));
   const activeConceptIds = new Set(aggregates.map((a) => a.conceptKey));
-  const staleInsights = await db.aggregatedInsight.findMany({ where: { courseId, conceptId: { notIn: [...activeConceptIds] } }, include: { concept: true } });
+  const existingInsights = await db.aggregatedInsight.findMany({ where: { courseId }, include: { concept: true } });
+  const existingByConcept = new Map(existingInsights.map((insight) => [insight.conceptId, insight]));
+  const staleInsights = existingInsights.filter((insight) => !activeConceptIds.has(insight.conceptId));
   for (const stale of staleInsights) {
-    await db.aggregatedInsight.update({ where: { id: stale.id }, data: { affectedParticipants: 0, totalParticipants, proportion: 0, evidenceState: "NO_DATA", summary: `No hay señales actuales suficientes sobre “${stale.concept.name}”.`, evidenceJson: [], explanationJson: [], generatedAt: new Date() } });
+    await db.aggregatedInsight.update({ where: { id: stale.id }, data: { affectedParticipants: 0, totalParticipants, proportion: 0, evidenceState: "NO_DATA", summary: `No hay señales actuales de participantes independientes sobre “${stale.concept.name}”.`, evidenceJson: [], explanationJson: [], firstDetectedAt: null, lastDetectedAt: null, signalCount: 0, reformulationCount: 0, sessionCount: 0, trend: insightTrend(stale.affectedParticipants, 0), generatedAt: new Date() } });
   }
 
   for (const aggregate of aggregates) {
@@ -109,12 +112,14 @@ export async function refreshCourseInsights(courseId: string) {
     if (!concept) continue;
     const pct = Math.round(aggregate.proportion * 100);
     const summary = aggregate.evidenceState === "SUFFICIENT"
-      ? `En ${aggregate.affectedParticipants} estudiantes/conversaciones independientes aparecen señales de duda sobre “${concept.name}” (${pct}% de quienes participaron en conversaciones analizadas).`
-      : `Aparecen señales sobre “${concept.name}”, pero todavía no hay suficiente evidencia para identificar un patrón agregado.`;
+      ? `En ${aggregate.affectedParticipants} participantes independientes aparecen señales de duda sobre “${concept.name}” (${pct}% de quienes participaron en conversaciones analizadas).`
+      : `Aparecen señales de ${aggregate.affectedParticipants} participante${aggregate.affectedParticipants === 1 ? "" : "s"} independiente${aggregate.affectedParticipants === 1 ? "" : "s"} sobre “${concept.name}”, pero todavía no hay evidencia suficiente para identificar un patrón agregado.`;
+    const previous = existingByConcept.get(concept.id);
+    const metadata = { firstDetectedAt: aggregate.firstDetectedAt, lastDetectedAt: aggregate.lastDetectedAt, signalCount: aggregate.signalCount, reformulationCount: aggregate.reformulationCount, sessionCount: aggregate.sessionCount, trend: insightTrend(previous?.affectedParticipants ?? 0, aggregate.affectedParticipants) as InsightTrend };
     const insight = await db.aggregatedInsight.upsert({
       where: { courseId_conceptId: { courseId, conceptId: concept.id } },
-      update: { affectedParticipants: aggregate.affectedParticipants, totalParticipants, proportion: aggregate.proportion, evidenceState: aggregate.evidenceState, summary, evidenceJson: aggregate.evidence, explanationJson: aggregate.explanations, generatedAt: new Date() },
-      create: { courseId, conceptId: concept.id, affectedParticipants: aggregate.affectedParticipants, totalParticipants, proportion: aggregate.proportion, evidenceState: aggregate.evidenceState, summary, evidenceJson: aggregate.evidence, explanationJson: aggregate.explanations }
+      update: { affectedParticipants: aggregate.affectedParticipants, totalParticipants, proportion: aggregate.proportion, evidenceState: aggregate.evidenceState, summary, evidenceJson: aggregate.evidence, explanationJson: aggregate.explanations, ...metadata, generatedAt: new Date() },
+      create: { courseId, conceptId: concept.id, affectedParticipants: aggregate.affectedParticipants, totalParticipants, proportion: aggregate.proportion, evidenceState: aggregate.evidenceState, summary, evidenceJson: aggregate.evidence, explanationJson: aggregate.explanations, ...metadata }
     });
     if (aggregate.evidenceState === "SUFFICIENT") await ensureRecommendation(insight.id, courseId, concept.name, summary, aggregate.explanations);
   }
