@@ -334,3 +334,36 @@ export async function submitFeedbackAction(fd: FormData) {
   revalidatePath(`/teacher/courses/${session.courseId}`);
   redirect(`/student/courses/${session.courseId}?notice=feedback-sent`);
 }
+
+export async function mergeConceptsAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  const { user } = await teacherCourse(courseId);
+  const { mergeConcepts } = await import("@/src/lib/concept-management");
+  await mergeConcepts(courseId, required(fd, "sourceConceptId"), required(fd, "targetConceptId"), user.id);
+  revalidatePath(`/teacher/courses/${courseId}`);
+  redirect(`/teacher/courses/${courseId}?view=concepts&notice=concepts-merged`);
+}
+
+export async function keepConceptsSeparateAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  await teacherCourse(courseId);
+  const { keepConceptsSeparate } = await import("@/src/lib/concept-management");
+  await keepConceptsSeparate(courseId, required(fd, "suggestionId"));
+  revalidatePath(`/teacher/courses/${courseId}`);
+}
+
+export async function renameConceptAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  const { user } = await teacherCourse(courseId);
+  const { renameConcept } = await import("@/src/lib/concept-management");
+  await renameConcept(courseId, required(fd, "conceptId"), required(fd, "name", 2), user.id);
+  revalidatePath(`/teacher/courses/${courseId}`);
+}
+
+export async function splitConceptAction(fd: FormData) {
+  const courseId = required(fd, "courseId");
+  const { user } = await teacherCourse(courseId);
+  const { splitConcept } = await import("@/src/lib/concept-management");
+  await splitConcept(courseId, required(fd, "conceptId"), required(fd, "name", 2), fd.getAll("aliasIds").map(String), fd.getAll("signalIds").map(String), user.id);
+  revalidatePath(`/teacher/courses/${courseId}`);
+}

@@ -3,6 +3,7 @@ import { db } from "./db";
 import { getAIProvider } from "./ai";
 import { participantKey as makeParticipantKey } from "./privacy";
 import { slugify, normalizeText } from "./text";
+import { resolveConcept } from "./concept-resolution";
 import { aggregateConceptSignals, anonymizeSnippet } from "./domain.mjs";
 import { ANALYSIS_SCHEMA, validateAnalysisPayload } from "./analysis-schema.mjs";
 
@@ -65,8 +66,7 @@ export async function analyzeConversation(conversationId: string) {
     await tx.conversationAnalysis.deleteMany({ where: { conversationId } });
     const analysis = await tx.conversationAnalysis.create({ data: { conversationId, participantKey: pKey, modelProvider: provider.name, modelName: provider.model } });
     for (const conceptResult of output.concepts) {
-      const slug = slugify(conceptResult.concept);
-      const concept = await tx.concept.upsert({ where: { courseId_slug: { courseId: conversation.courseId, slug } }, update: { name: conceptResult.concept }, create: { courseId: conversation.courseId, name: conceptResult.concept, slug } });
+      const concept = await resolveConcept(tx, conversation.courseId, conceptResult.concept);
       const patternByMessage = new Map(conceptResult.explanation_patterns.map((p) => [p.evidence_message_id, p]));
       const defaultPattern = conceptResult.explanation_patterns.find((p) => p.observed_signal !== "NONE");
       let usedDefaultPattern = false;
@@ -86,6 +86,8 @@ export async function analyzeConversation(conversationId: string) {
     }
   });
   await refreshCourseInsights(conversation.courseId);
+  const { refreshConceptMergeSuggestions } = await import("./concept-management");
+  await refreshConceptMergeSuggestions(conversation.courseId);
 }
 
 export async function refreshCourseInsights(courseId: string) {
@@ -93,7 +95,7 @@ export async function refreshCourseInsights(courseId: string) {
   const [participantRows, signals, concepts] = await Promise.all([
     db.conversationAnalysis.findMany({ where: { conversation: { courseId } }, distinct: ["participantKey"], select: { participantKey: true } }),
     db.conceptSignal.findMany({ where: { concept: { courseId } }, select: { conceptId: true, participantKey: true, evidenceSnippet: true, explanationType: true, understandingSignal: true } }),
-    db.concept.findMany({ where: { courseId } })
+    db.concept.findMany({ where: { courseId, mergedAt: null } })
   ]);
   const totalParticipants = participantRows.length;
   const aggregates = aggregateConceptSignals(signals, totalParticipants, threshold);
