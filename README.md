@@ -58,6 +58,17 @@ npm run db:deploy
 npm run db:seed
 ```
 
+To validate a release from an empty, isolated PostgreSQL schema, run:
+
+```bash
+npm run db:verify-clean
+```
+
+This applies every committed migration, exercises the `ClassSession` feedback
+insight query and the `ClassFeedback` compound lookup used when feedback is
+submitted, then removes the temporary schema. It requires `DATABASE_URL` and
+never uses `prisma db push`.
+
 When you intentionally change `prisma/schema.prisma` during development, create the next migration with:
 
 ```bash
