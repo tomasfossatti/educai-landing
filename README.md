@@ -1,3 +1,5 @@
+> **Versión previa del MVP de Educai** (proveedor DeepSeek). El repositorio vigente es [`educa-educai`](https://github.com/tomasfossatti/educa-educai). Este repo queda archivado como referencia.
+
 # Educai MVP
 
 Educai turns student–AI learning conversations into aggregated pedagogical evidence and actionable teacher decisions, then closes the loop with post-class feedback.
